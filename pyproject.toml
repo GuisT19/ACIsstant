@@ -1,0 +1,26 @@
+[project]
+name = "antigravity-assistant"
+version = "1.0.0"
+description = "Local AI Engineering Assistant"
+authors = [
+    {name = "Henri"}
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "llama-cpp-python",
+    "pydantic",
+    "langchain",
+    "langchain-community",
+    "faiss-cpu",
+    "sentence-transformers",
+    "huggingface-hub",
+    "python-multipart",
+    "psutil",
+    "python-dotenv"
+]
+
+[tool.pyright]
+include = ["backend"]
+venvPath = "."
+venv = "venv"

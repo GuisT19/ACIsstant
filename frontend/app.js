@@ -1,6 +1,6 @@
 const API_BASE = "http://localhost:8000/api";
 let currentChatId = null;
-let currentLanguage = "pt-PT";
+let currentLanguage = "en-US";
 
 // --- Initializing UI ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -62,7 +62,7 @@ async function loadChatList() {
 }
 
 async function createNewChat() {
-    const title = prompt("Título do chat:", "Novo Estudo");
+    const title = prompt("Chat Title:", "New Study Session");
     if (!title) return;
     
     const formData = new FormData();
@@ -89,11 +89,12 @@ async function loadChat(chatId, title) {
     // Update active state in sidebar
     document.querySelectorAll('.chat-item').forEach(el => {
         el.classList.remove('active');
-        if (el.innerText.trim() === title) el.classList.add('active');
+        // Check for matching title in innerHTML text content
+        if (el.textContent.includes(title)) el.classList.add('active');
     });
 
     const messagesPane = document.getElementById('chat-messages');
-    messagesPane.innerHTML = '<div class="loader">Carregando mensagens...</div>';
+    messagesPane.innerHTML = '<div class="loader">Loading messages...</div>';
     
     try {
         const res = await fetch(`${API_BASE}/chats/${chatId}/messages`);
@@ -101,13 +102,13 @@ async function loadChat(chatId, title) {
         messagesPane.innerHTML = '';
         
         if (messages.length === 0) {
-            messagesPane.innerHTML = `<div class="welcome-screen"><h2>Chat iniciado: ${title}</h2><p>Estou pronto para as tuas dúvidas.</p></div>`;
+            messagesPane.innerHTML = `<div class="welcome-screen"><h2>Chat Started: ${title}</h2><p>I am ready to help with your questions.</p></div>`;
         } else {
             messages.forEach(msg => appendMessage(msg.role, msg.content));
         }
     } catch (err) {
         console.error("Failed to load messages:", err);
-        messagesPane.innerHTML = 'Erro ao carregar mensagens.';
+        messagesPane.innerHTML = 'Error loading messages.';
     }
 }
 
@@ -153,6 +154,8 @@ async function sendMessage() {
             })
         });
 
+        if (!response.body) throw new Error("No response body");
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         
@@ -167,7 +170,7 @@ async function sendMessage() {
         }
     } catch (err) {
         console.error("Streaming error:", err);
-        assistantMsgDiv.innerText = "Erro ao processar a resposta.";
+        assistantMsgDiv.innerText = "Error processing response.";
     }
 }
 
@@ -179,7 +182,6 @@ function quickAction(text) {
     document.getElementById('user-input').value = text;
     if (!currentChatId) {
         // Automatically create a chat if none exists
-        const btn = document.querySelector('.new-chat-btn');
-        btn.click();
+        document.querySelector('.new-chat-btn').click();
     }
 }

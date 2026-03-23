@@ -1,55 +1,55 @@
 # Antigravity: Local AI Engineering Assistant
 
-Este é um assistente de IA offline e portátil, otimizado para o teu ThinkPad T480s.
+This is an offline, portable AI assistant optimized for your hardware. It specializes in Electronics Engineering, Signals, and Physics.
 
-## 🚀 Como Iniciar
+## 🚀 Getting Started
 
-### No Windows:
-1. **Espera pela conclusão da instalação** (o ambiente `venv` está a ser configurado).
-2. **Faz o download do modelo**:
+### Windows:
+1. **Environment Setup**:
+   Run the `install_windows.bat` file.
+2. **Download the Model**:
    ```bash
    venv\Scripts\python download_model.py
    ```
-3. **Inicia o Assistente**:
-   Executa o ficheiro `run.bat`.
+3. **Launch the Assistant**:
+   Run the `run.bat` file.
 
-### No Arch Linux:
-1. **Instala e Configura o ambiente**:
+### Linux (Arch):
+1. **Environment Setup**:
    ```bash
-   chmod +x install_arch.sh
-   ./install_arch.sh
+   chmod +x install_linux.sh
+   ./install_linux.sh
    ```
-2. **Faz o download do modelo**:
+2. **Download the Model**:
    ```bash
    venv/bin/python download_model.py
    ```
-3. **Inicia o Assistente**:
-   Executa o ficheiro `run.sh`:
+3. **Launch the Assistant**:
    ```bash
    ./run.sh
    ```
 
-### Todos os Sistemas:
-**Acede à Interface**:
-Abre o teu browser em `http://localhost:8000`.
+### All Systems:
+**Access the Web Interface**:
+Open your browser at `http://localhost:8000`.
 
-## 📚 Funcionalidades Principais
+## 📚 Key Features
 
-- **Engineering Assistant**: Especialista em Eletrónica, Sinais e Física.
-- **RAG (Knowledge Context)**: Coloca os teus PDFs e ficheiros Markdown na pasta `data/uploads`. O assistente irá ler estes ficheiros para responder às tuas perguntas.
-- **Multi-Chat**: Guarda e gere múltiplas conversas guardadas localmente (SQLite).
-- **Circuitos**: Pede diagramas e ele irá gerar código **Circuitikz** ou **SPICE**.
-- **Multilingue**: Suporta Português Europeu e Inglês.
+- **Engineering Assistant**: Expert in Electronics, Signals, and Physics.
+- **RAG (Knowledge Context)**: Place your PDFs and Markdown files in the `data/uploads` folder. The assistant will read these files to provide context-aware answers.
+- **Multi-Chat**: Save and manage multiple conversations locally (SQLite).
+- **Circuit Diagrams**: Request diagrams and it will generate **Circuitikz** (LaTeX) or **SPICE** code.
+- **Multilingual**: Supports English (Native) and European Portuguese.
 
-## 🛠️ Notas de Performance (CPU-Only)
+## 🛠️ Performance Notes (CPU-Only)
 
-- O modelo **Qwen2.5 3B/4B** é o ideal para o teu CPU.
-- A geração de texto será de aproximadamente 5-10 tokens por segundo.
-- O RAG ajuda a manter o contexto sem sobrecarregar a memória RAM.
+- The **Qwen2.5 3B** model is optimized for CPU inference.
+- Text generation speed is approximately 5-10 tokens per second.
+- RAG helps maintain accuracy without exhausting your RAM.
 
-## 📂 Estrutura de Pastas
+## 📂 Project Structure
 
-- `/backend`: Lógica FastAPI, LLM e RAG.
-- `/frontend`: Interface Web (HTML/JS/CSS).
-- `/models`: Onde o modelo GGUF é guardado.
-- `/data/uploads`: Onde deves colocar os teus materiais de estudo.
+- `/backend`: FastAPI logic, LLM, and RAG implementation.
+- `/frontend`: Web Interface (HTML/JS/CSS).
+- `/models`: Storage for GGUF model files.
+- `/data/uploads`: Folder for your study materials.

@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from .config import DATA_DIR
 
 class ChatDB:
-    def __init__(self, db_path: str = "data/chats.db"):
-        self.db_path = Path(__file__).parent.parent / db_path
+    def __init__(self, db_path: str = "chats.db"):
+        self.db_path = DATA_DIR / db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.init_db()
 

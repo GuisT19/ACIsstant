@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="en-US">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Highlight.js for code blocks -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
-    <!-- Marked and Katex moved to footer for faster initial load -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
@@ -20,7 +19,7 @@
             <div class="sidebar-header">
                 <h2>Antigravity <span class="badge">V1</span></h2>
                 <button class="new-chat-btn" onclick="createNewChat()">
-                    <i class="fas fa-plus"></i> Novo Chat
+                    <i class="fas fa-plus"></i> New Chat
                 </button>
             </div>
             <div class="chat-list" id="chat-list">
@@ -28,7 +27,7 @@
             </div>
             <div class="sidebar-footer">
                 <div class="status-indicator">
-                    <span class="dot"></span> Model Ready (Qwen 4B)
+                    <span class="dot"></span> Model Ready (Qwen 3B)
                 </div>
             </div>
         </aside>
@@ -38,12 +37,12 @@
             <header class="chat-header">
                 <button id="toggle-sidebar" class="icon-btn"><i class="fas fa-bars"></i></button>
                 <div class="chat-info">
-                    <h3 id="current-chat-title">Bem-vindo</h3>
+                    <h3 id="current-chat-title">Welcome</h3>
                 </div>
                 <div class="chat-actions">
                     <select id="lang-select" onchange="updateLanguage()">
-                        <option value="pt-PT">PT-PT</option>
                         <option value="en-US">EN-US</option>
+                        <option value="pt-PT">PT-PT</option>
                     </select>
                 </div>
             </header>
@@ -51,22 +50,22 @@
             <div class="chat-messages" id="chat-messages">
                 <div class="welcome-screen">
                     <i class="fas fa-microchip main-icon"></i>
-                    <h1>Olá, Henri!</h1>
-                    <p>Como posso ajudar-te no teu estudo de Eletrónica e Sinais hoje?</p>
+                    <h1>Hello, Henri!</h1>
+                    <p>How can I help you with your Electronics and Signals study today?</p>
                     <div class="suggestions">
-                        <button onclick="quickAction('Explica um filtro passa-baixo de 2ª ordem')">Filtros Passo-Baixo</button>
-                        <button onclick="quickAction('Explica o princípio de funcionamento de um Op-Amp')">Op-Amps</button>
-                        <button onclick="quickAction('Gera um circuito simples em LaTeX (Circuitikz)')">Circuito em LaTeX</button>
+                        <button onclick="quickAction('Explain a 2nd order low-pass filter')">Low-Pass Filters</button>
+                        <button onclick="quickAction('Explain the operating principle of an Op-Amp')">Op-Amps</button>
+                        <button onclick="quickAction('Generate a simple circuit in LaTeX (Circuitikz)')">LaTeX Circuits</button>
                     </div>
                 </div>
             </div>
 
             <footer class="chat-input-area">
                 <div class="input-wrapper">
-                    <textarea id="user-input" placeholder="Escreve a tua dúvida aérea..." rows="1"></textarea>
+                    <textarea id="user-input" placeholder="Enter your aerial query..." rows="1"></textarea>
                     <button id="send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
                 </div>
-                <p class="footer-note">Qwen2.5 4B | Local Offline Inference</p>
+                <p class="footer-note">Qwen2.5 3B | Local Offline Inference</p>
             </footer>
         </main>
     </div>

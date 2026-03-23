@@ -4,14 +4,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Models
-ACIsstant/models/*.gguf
-ACIsstant/models/*.bin
-ACIsstant/models/*.json
+# Models (GGUF etc)
+models/
+*.gguf
+*.bin
 
-# Data
-ACIsstant/data/uploads/*
-!ACIsstant/data/uploads/.gitkeep
+# Data and Uploads
+data/chats.db
+data/uploads/*
+!data/uploads/.gitkeep
+data/vectordb/*
+
+# Environment
+.env
 
 # OS
 .DS_Store

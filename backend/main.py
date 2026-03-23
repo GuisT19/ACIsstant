@@ -9,9 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 
-from backend.llm import LLMManager
-from backend.database import ChatDB
-from backend.rag import RAGManager
+from .llm import LLMManager
+from .database import ChatDB
+from .rag import RAGManager
+from .config import API_HOST, API_PORT, DEBUG, FRONTEND_DIR
 
 # --- API initialization ---
 app = FastAPI(title="Antigravity Local AI Engineering Assistant")
@@ -25,12 +26,12 @@ app.add_middleware(
 )
 
 # Serve Frontend
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 @app.get("/")
 async def read_index():
     from fastapi.responses import FileResponse
-    return FileResponse("frontend/index.html")
+    return FileResponse(FRONTEND_DIR / "index.html")
 
 # Managers
 db = ChatDB()
@@ -41,7 +42,7 @@ rag_manager = RAGManager()
 class ChatRequest(BaseModel):
     chat_id: str
     message: str
-    language: Optional[str] = "pt-PT"
+    language: Optional[str] = "en-US"
 
 # --- Endpoints ---
 
@@ -50,7 +51,7 @@ async def get_chats():
     return db.get_chats()
 
 @app.post("/api/chats")
-async def create_chat(title: str = Form("Novo Chat")):
+async def create_chat(title: str = Form("New Chat")):
     chat_id = str(uuid.uuid4())
     db.create_chat(chat_id, title)
     return {"chat_id": chat_id, "title": title}
@@ -64,9 +65,6 @@ async def chat_stream(request: ChatRequest):
     chat_id = request.chat_id
     user_msg = request.message
     
-    # Check if chat exists
-    # we could verify if chat exists in DB, but for now we trust the ID
-
     # Store user message
     db.add_message(chat_id, "user", user_msg)
     
@@ -76,11 +74,10 @@ async def chat_stream(request: ChatRequest):
     context = rag_manager.query(user_msg)
     
     # Prepare messages for LLM
-    # include system prompt, RAG context and last few messages for context
     system_prompt = llm_manager.get_system_prompt(request.language)
     
     if context:
-        system_prompt += f"\n\nContexto dos teus materiais de estudo:\n{context}"
+        system_prompt += f"\n\nContext from your study materials:\n{context}"
     
     llm_messages = [{"role": "system", "content": system_prompt}] + past_messages[-10:] # Context window limit
     
@@ -102,11 +99,12 @@ async def delete_chat(chat_id: str):
 
 @app.post("/api/upload")
 async def upload_docs(files: List[UploadFile] = File(...)):
-    # To be implemented with RAG
+    # RAG document processing implementation
     # 1. Save files to data/uploads
     # 2. Process and add to FAISS
+    # For now, just a placeholder success
     return {"status": "success", "files": [f.filename for f in files]}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=API_HOST, port=API_PORT)

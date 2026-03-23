@@ -2,12 +2,15 @@ import os
 from pathlib import Path
 from llama_cpp import Llama
 from typing import List, Dict, Optional, Generator
+from .config import MODELS_DIR, MODEL_NAME
 
 class LLMManager:
-    def __init__(self, model_name: str = "qwen2.5-4b-instruct-q4_k_m.gguf"):
+    llm: Optional[Llama]
+    model_path: Path
+
+    def __init__(self, model_filename: Optional[str] = None):
         # Model path setup
-        self.models_dir = Path(__file__).parent.parent / "models"
-        self.model_path = self.models_dir / model_name
+        self.model_path = MODELS_DIR / (model_filename or MODEL_NAME)
         
         # Check if model exists
         if not self.model_path.exists():
@@ -16,8 +19,7 @@ class LLMManager:
         else:
             print(f"[LLM] Loading model: {self.model_path}")
             # Hardware-optimized settings for ThinkPad T480s (CPU-only)
-            # - n_threads: 4-6 (it has 4 cores / 8 threads, but too many makes it slow)
-            # - n_ctx: 4096 (good balance for CPU RAM)
+            # 4 physical cores / 8 threads - we use 6 for a good balance
             self.llm = Llama(
                 model_path=str(self.model_path),
                 n_threads=6,
@@ -52,6 +54,8 @@ class LLMManager:
 
         prompt = self.format_prompt(messages)
         
+        # Guarded by the check above, asserting for linter
+        assert self.llm is not None
         stream = self.llm.create_completion(
             prompt=prompt,
             max_tokens=max_tokens,
@@ -65,19 +69,23 @@ class LLMManager:
             token = output["choices"][0]["text"]
             yield token
 
-    def get_system_prompt(self, language: str = "pt-PT") -> str:
-        if language == "pt-PT":
+    def get_system_prompt(self, language: str = "en-US") -> str:
+        if language == "en-US":
+            return (
+                "You are an Antigravity Local AI Engineering Assistant. "
+                "Respond technically and precisely in English. "
+                "You are an expert in Electronics Engineering, Signals, Physics, and Mathematics. "
+                "When generating circuit diagrams, use Circuitikz (LaTeX code) or SPICE netlists."
+            )
+        elif language == "pt-PT":
             return (
                 "És um Assistente de Engenharia de IA Local (Antigravity). "
                 "Respondes em Português Europeu de forma técnica e precisa. "
                 "És especialista em Engenharia Eletrónica, Sinais, Física e Matemática. "
-                "Sempre que gerar circuitos, usa Circuitikz (LaTeX) ou SPICE netlists. "
-                "Se o utilizador falar em Inglês, responde em Inglês, mas para questões de engenharia complexas em Português, usa a terminologia portuguesa correta com os termos ingleses entre parênteses se necessário."
+                "Sempre que gerar circuitos, usa Circuitikz (LaTeX) ou SPICE netlists."
             )
         else:
             return (
-                "You are a Local AI Engineering Assistant (Antigravity). "
-                "Respond accurately and technically. "
-                "You are an expert in Electronics, Signals, Physics, and Mathematics. "
-                "When generating circuits, use Circuitikz (LaTeX) or SPICE netlists."
+                "You are a Local AI Engineering Assistant. Analyze the user's domain (Electronics, Signals, Physics) "
+                "and provide technically accurate responses. Use appropriate technical terminology."
             )
