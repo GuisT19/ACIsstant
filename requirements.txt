@@ -1,12 +1,13 @@
-fastapi==0.111.*
-uvicorn==0.30.*
-llama-cpp-python==0.2.82
-pydantic==2.8.*
-langchain==0.2.*
-langchain-community==0.2.*
-faiss-cpu==1.8.*
-sentence-transformers==3.0.*
-huggingface_hub==0.23.*
-python-multipart==0.0.*
+fastapi
+uvicorn
+llama-cpp-python
+pydantic
+langchain
+langchain-community
+faiss-cpu
+sentence-transformers
+huggingface_hub
+python-multipart
 sqlite3-binary; platform_system == "Windows"
 psutil
+pypdf

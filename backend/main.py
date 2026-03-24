@@ -95,6 +95,11 @@ async def chat_stream(request: ChatRequest):
 
     return StreamingResponse(event_generator(), media_type="text/plain")
 
+@app.put("/api/chats/{chat_id}")
+async def rename_chat(chat_id: str, title: str = Form(...)):
+    db.update_chat_title(chat_id, title)
+    return {"status": "renamed", "title": title}
+
 @app.delete("/api/chats/{chat_id}")
 async def delete_chat(chat_id: str):
     db.delete_chat(chat_id)
@@ -102,10 +107,33 @@ async def delete_chat(chat_id: str):
 
 @app.post("/api/upload")
 async def upload_docs(files: List[UploadFile] = File(...)):
-    # To be implemented with RAG
-    # 1. Save files to data/uploads
-    # 2. Process and add to FAISS
-    return {"status": "success", "files": [f.filename for f in files]}
+    import shutil
+    from pathlib import Path
+    
+    upload_dir = Path("data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    saved_files = []
+    for f in files:
+        file_path = upload_dir / f.filename
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(f.file, buffer)
+        saved_files.append(f.filename)
+        
+    try:
+        rag_manager.process_documents()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Indexing error: {str(e)}")
+        
+    return {"status": "success", "files": saved_files}
+
+@app.post("/api/rag/index")
+async def trigger_index():
+    try:
+        rag_manager.process_documents()
+        return {"status": "success", "message": "Documents indexed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

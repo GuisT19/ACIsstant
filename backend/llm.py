@@ -4,7 +4,7 @@ from llama_cpp import Llama
 from typing import List, Dict, Optional, Generator
 
 class LLMManager:
-    def __init__(self, model_name: str = "qwen2.5-4b-instruct-q4_k_m.gguf"):
+    def __init__(self, model_name: str = "qwen2.5-3b-instruct-q4_k_m.gguf"):
         # Model path setup
         self.models_dir = Path(__file__).parent.parent / "models"
         self.model_path = self.models_dir / model_name

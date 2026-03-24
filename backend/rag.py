@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import List
 from langchain_community.document_loaders import TextLoader, PyPDFLoader, DirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
@@ -28,6 +28,11 @@ class RAGManager:
             )
         else:
             print("[RAG] No index found.")
+            if self.data_dir.exists():
+                valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
+                if valid_files:
+                    print(f"[RAG] Found {len(valid_files)} unindexed documents. Auto-indexing now...")
+                    self.process_documents()
 
     def process_documents(self):
         print(f"[RAG] Processing documents in {self.data_dir}...")

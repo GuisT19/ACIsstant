@@ -5,13 +5,19 @@ __pycache__/
 *$py.class
 
 # Models
-ACIsstant/models/*.gguf
-ACIsstant/models/*.bin
-ACIsstant/models/*.json
+models/*.gguf
+models/*.bin
+models/*.json
 
-# Data
-ACIsstant/data/uploads/*
-!ACIsstant/data/uploads/.gitkeep
+# RAG Data (ignore uploaded documents but keep folder structure)
+data/uploads/*
+!data/uploads/.gitkeep
+!data/uploads/README.md
+data/vectordb/
+
+# Fine-tuning (ignore output adapters/models, keep structure)
+fine-tuning/output/*
+!fine-tuning/output/.gitkeep
 
 # OS
 .DS_Store
