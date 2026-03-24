@@ -15,8 +15,15 @@ fi
 echo "[1/2] Activating Virtual Environment..."
 source venv/bin/activate
 
-# Step 3: Run the backend server
-echo "[2/2] Starting the Backend Server..."
+# Step 3: Free port 8000 if already in use
+if fuser 8000/tcp &>/dev/null; then
+    echo "[WARNING] Port 8000 is in use. Terminating previous process..."
+    fuser -k 8000/tcp
+    sleep 1
+fi
+
+# Step 4: Run the backend server
+echo "[2/2] Starting Backend Server..."
 python -m backend.main
 
 echo "Assistant closed."

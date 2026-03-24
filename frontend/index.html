@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Highlight.js for code blocks -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
+    <!-- Marked and internal styles -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="dark-mode">
@@ -21,6 +25,10 @@
                 <button class="new-chat-btn" onclick="createNewChat()">
                     <i class="fas fa-plus"></i> New Chat
                 </button>
+                <button class="new-chat-btn" onclick="document.getElementById('file-upload').click()" style="margin-top: 10px; background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
+                    <i class="fas fa-file-upload"></i> Upload & Index RAG
+                </button>
+                <input type="file" id="file-upload" multiple accept=".pdf,.txt,.md" style="display: none;" onchange="uploadFiles(this.files)">
             </div>
             <div class="chat-list" id="chat-list">
                 <!-- Chats will be loaded here -->
@@ -74,6 +82,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/latex.min.js"></script>
-    <script src="app.js"></script>
+    
+    <!-- KaTeX Javascript -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <script src="static/app.js"></script>
 </body>
 </html>

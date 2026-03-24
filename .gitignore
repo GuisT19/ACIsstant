@@ -8,15 +8,21 @@ __pycache__/
 models/
 *.gguf
 *.bin
+*.json
 
-# Data and Uploads
+# Data and Uploads (ignore uploaded documents but keep folder structure via .gitkeep)
 data/chats.db
 data/uploads/*
 !data/uploads/.gitkeep
+!data/uploads/README.md
 data/vectordb/*
 
 # Environment
 .env
+
+# Fine-tuning (ignore output adapters/models, keep structure)
+fine-tuning/output/*
+!fine-tuning/output/.gitkeep
 
 # OS
 .DS_Store

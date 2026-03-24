@@ -52,8 +52,17 @@ async function loadChatList() {
             const item = document.createElement('div');
             item.className = 'chat-item';
             if (chat.id === currentChatId) item.classList.add('active');
-            item.innerHTML = `<i class="far fa-comment-dots"></i> ${chat.title}`;
-            item.onclick = () => loadChat(chat.id, chat.title);
+            
+            const escapedTitle = chat.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            item.innerHTML = `
+                <div class="chat-title-wrap" title="${escapedTitle}" onclick="loadChat('${chat.id}', '${escapedTitle}')">
+                    <i class="far fa-comment-dots"></i> <span>${chat.title}</span>
+                </div>
+                <div class="chat-actions-btn">
+                    <button title="Renomear" onclick="renameChat(event, '${chat.id}', '${escapedTitle}')"><i class="fas fa-edit"></i></button>
+                    <button title="Eliminar" onclick="deleteChat(event, '${chat.id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
             list.appendChild(item);
         });
     } catch (err) {
@@ -61,9 +70,9 @@ async function loadChatList() {
     }
 }
 
-async function createNewChat() {
-    const title = prompt("Chat Title:", "New Study Session");
-    if (!title) return;
+async function createNewChat(titleOpt = null) {
+    const title = titleOpt || prompt("Chat Title:", "New Study Session");
+    if (!title) return null;
     
     const formData = new FormData();
     formData.append('title', title);
@@ -77,8 +86,10 @@ async function createNewChat() {
         currentChatId = data.chat_id;
         loadChat(data.chat_id, data.title);
         loadChatList();
+        return currentChatId;
     } catch (err) {
         console.error("Failed to create chat:", err);
+        return null;
     }
 }
 
@@ -106,9 +117,24 @@ async function loadChat(chatId, title) {
         } else {
             messages.forEach(msg => appendMessage(msg.role, msg.content));
         }
+        renderMathInPane(messagesPane);
     } catch (err) {
         console.error("Failed to load messages:", err);
         messagesPane.innerHTML = 'Error loading messages.';
+    }
+}
+
+function renderMathInPane(element) {
+    if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(element, {
+            delimiters: [
+                {left: "$$", right: "$$", display: true},
+                {left: "\\[", right: "\\]", display: true},
+                {left: "$", right: "$", display: false},
+                {left: "\\(", right: "\\)", display: false}
+            ],
+            throwOnError: false
+        });
     }
 }
 
@@ -118,29 +144,48 @@ function appendMessage(role, content) {
     msgDiv.className = `message ${role}`;
     
     if (role === 'assistant') {
-        msgDiv.innerHTML = marked.parse(content);
+        const header = `<div class="ai-header"><i class="fas fa-robot"></i> Antigravity</div>`;
+        const bodyClass = `class="ai-body"`;
+        
+        if (content === 'TYPING') {
+            msgDiv.innerHTML = `${header}<div ${bodyClass}><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+        } else {
+            msgDiv.innerHTML = `${header}<div ${bodyClass}>${marked.parse(content)}</div>`;
+        }
     } else {
         msgDiv.innerText = content;
     }
     
     pane.appendChild(msgDiv);
-    pane.scrollTop = pane.scrollHeight;
+    
+    // Smooth scroll to bottom
+    setTimeout(() => {
+        pane.scrollTo({ top: pane.scrollHeight, behavior: 'smooth' });
+    }, 10);
+    
     return msgDiv;
 }
 
 async function sendMessage() {
     const input = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
     const message = input.value.trim();
-    if (!message || !currentChatId) return;
+    if (!message) return;
+
+    if (!currentChatId) {
+        const newId = await createNewChat("Chat Automático");
+        if (!newId) return;
+    }
 
     input.value = '';
     input.style.height = 'auto';
+    sendBtn.disabled = true;
     
     // Add user message to UI
     appendMessage('user', message);
     
-    // Add assistant message placeholder
-    const assistantMsgDiv = appendMessage('assistant', '');
+    // Add assistant message placeholder as typing indicator
+    const assistantMsgDiv = appendMessage('assistant', 'TYPING');
     let fullContent = "";
     
     try {
@@ -154,10 +199,11 @@ async function sendMessage() {
             })
         });
 
-        if (!response.body) throw new Error("No response body");
+        if (!response.ok) throw new Error("Server response error");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let isFirstChunk = true;
         
         while (true) {
             const { done, value } = await reader.read();
@@ -165,12 +211,31 @@ async function sendMessage() {
             
             const chunk = decoder.decode(value, { stream: true });
             fullContent += chunk;
-            assistantMsgDiv.innerHTML = marked.parse(fullContent);
-            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+            
+            if (isFirstChunk) {
+                // Clear the typing indicator
+                assistantMsgDiv.querySelector('.ai-body').innerHTML = '';
+                isFirstChunk = false;
+            }
+            
+            const pane = document.getElementById('chat-messages');
+            // Check if user is already near the bottom before auto-scrolling
+            const isScrolledToBottom = pane.scrollHeight - pane.clientHeight <= pane.scrollTop + 80;
+            
+            const bodyEl = assistantMsgDiv.querySelector('.ai-body');
+            bodyEl.innerHTML = marked.parse(fullContent);
+            renderMathInPane(bodyEl);
+            
+            if (isScrolledToBottom) {
+                pane.scrollTop = pane.scrollHeight;
+            }
         }
     } catch (err) {
         console.error("Streaming error:", err);
-        assistantMsgDiv.innerText = "Error processing response.";
+        assistantMsgDiv.querySelector('.ai-body').innerHTML = `<span style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Communication error with server. Please check if the backend is running.</span>`;
+    } finally {
+        sendBtn.disabled = false;
+        input.focus();
     }
 }
 
@@ -180,8 +245,86 @@ function updateLanguage() {
 
 function quickAction(text) {
     document.getElementById('user-input').value = text;
-    if (!currentChatId) {
-        // Automatically create a chat if none exists
-        document.querySelector('.new-chat-btn').click();
+    sendMessage(); // Auto-send when clicking suggestions
+}
+
+async function uploadFiles(files) {
+    if (!files || files.length === 0) return;
+    
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+    }
+    
+    const btn = document.querySelector('.fa-file-upload').parentElement;
+    const oldHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Indexing...';
+    btn.disabled = true;
+    
+    try {
+        const res = await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            alert(`Success! ${data.files.length} document(s) indexed in RAG.`);
+        } else {
+            alert(`Indexing error: ${data.detail || 'Unknown error'}`);
+        }
+    } catch (err) {
+        console.error("Upload error:", err);
+        alert("Network failure while sending files.");
+    } finally {
+        btn.innerHTML = oldHtml;
+        btn.disabled = false;
+        // Reset file input
+        document.getElementById('file-upload').value = '';
+    }
+}
+
+async function renameChat(evt, chatId, currentTitle) {
+    evt.stopPropagation();
+    const newTitle = prompt("New title:", currentTitle);
+    if (!newTitle || newTitle.trim() === "" || newTitle === currentTitle) return;
+    
+    const formData = new FormData();
+    formData.append('title', newTitle.trim());
+    
+    try {
+        const res = await fetch(`${API_BASE}/chats/${chatId}`, {
+            method: 'PUT',
+            body: formData
+        });
+        if (res.ok) {
+            if (currentChatId === chatId) {
+                document.getElementById('current-chat-title').innerText = newTitle.trim();
+            }
+            loadChatList();
+        }
+    } catch (err) {
+        console.error("Failed to rename chat:", err);
+    }
+}
+
+async function deleteChat(evt, chatId) {
+    evt.stopPropagation();
+    if (!confirm("Are you sure you want to delete this chat?")) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/chats/${chatId}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            if (currentChatId === chatId) {
+                currentChatId = null;
+                document.getElementById('chat-messages').innerHTML = `<div class="welcome-screen"><h2>Chat Deleted</h2><p>Start a new conversation.</p></div>`;
+                document.getElementById('current-chat-title').innerText = 'Welcome';
+            }
+            loadChatList();
+        }
+    } catch (err) {
+        console.error("Failed to delete chat:", err);
     }
 }
