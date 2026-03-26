@@ -1,5 +1,6 @@
 import os
 import warnings
+from pathlib import Path
 
 # Suppress noisy third-party warnings before any imports
 warnings.filterwarnings("ignore")
@@ -12,7 +13,7 @@ import uuid
 import json
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request # type: ignore
-from fastapi.responses import StreamingResponse, JSONResponse # type: ignore
+from fastapi.responses import StreamingResponse, JSONResponse, FileResponse # type: ignore
 from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from fastapi.staticfiles import StaticFiles # type: ignore
 from pydantic import BaseModel # type: ignore
@@ -38,7 +39,6 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.get("/")
 async def read_index():
-    from fastapi.responses import FileResponse
     return FileResponse("frontend/index.html")
 
 # Managers
@@ -152,6 +152,31 @@ async def upload_docs(files: List[UploadFile] = File(...)):
         raise HTTPException(status_code=500, detail=f"Indexing error: {str(e)}")
         
     return {"status": "success", "files": saved_files}
+
+@app.get("/api/files")
+async def list_uploaded_files():
+    from pathlib import Path
+    upload_dir = Path("data/uploads")
+    if not upload_dir.exists():
+        return []
+    
+    files = []
+    for f in upload_dir.rglob("*"):
+        if f.is_file() and f.name != "README.md":
+            files.append({
+                "name": f.name,
+                "path": str(f.relative_to(Path("data/uploads"))).replace("\\", "/"),
+                "extension": f.suffix.lower().replace(".", "")
+            })
+    return files
+
+@app.get("/api/files/download/{filename:path}")
+async def download_file(filename: str):
+    from fastapi.responses import FileResponse
+    file_path = Path("data/uploads") / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path)
 
 @app.post("/api/rag/index")
 async def trigger_index():

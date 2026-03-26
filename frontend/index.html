@@ -29,11 +29,11 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>ACIsstant <span class="badge">V1</span></h2>
-                <button class="new-chat-btn" onclick="createNewChat()">
+                <h2 id="app-title">ACIsstant <span class="badge">V1</span></h2>
+                <button class="new-chat-btn" id="btn-new-chat" onclick="createNewChat()">
                     <i class="fas fa-plus"></i> New Chat
                 </button>
-                <button class="new-chat-btn" onclick="document.getElementById('file-upload').click()"
+                <button class="new-chat-btn" id="btn-upload" onclick="document.getElementById('file-upload').click()"
                     style="margin-top: 10px; background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">
                     <i class="fas fa-file-upload"></i> Upload & Index RAG
                 </button>
@@ -44,8 +44,11 @@
                 <!-- Chats will be loaded here -->
             </div>
             <div class="sidebar-footer">
+                <button class="files-btn" id="btn-files" onclick="toggleFilesModal()">
+                    <i class="fas fa-folder-open"></i> Files
+                </button>
                 <div class="status-indicator">
-                    <span class="dot"></span> Model Ready (Qwen 3B)
+                    <span class="dot"></span> <span id="model-status">Model Ready (Qwen 3B)</span>
                 </div>
             </div>
         </aside>
@@ -58,7 +61,7 @@
                     <h3 id="current-chat-title">Welcome</h3>
                 </div>
                 <div class="chat-actions">
-                    <button class="icon-btn" onclick="showSettings()" title="Hardware Settings">
+                    <button class="icon-btn" id="btn-settings" onclick="showSettings()" title="Hardware Settings">
                         <i class="fas fa-cog"></i>
                     </button>
                     <select id="lang-select" onchange="updateLanguage()">
@@ -69,14 +72,13 @@
             </header>
 
             <div class="chat-messages" id="chat-messages">
-                <div class="welcome-screen">
+                <div class="welcome-screen" id="welcome-screen">
                     <i class="fas fa-microchip main-icon"></i>
-                    <h1>Hello!</h1>
-                    <p>How can I help you with your Electronics and Signals studies today?</p>
-                    <div class="suggestions">
+                    <h1 id="welcome-title">Hello!</h1>
+                    <p id="welcome-subtitle">How can I help you with your Electronics and Signals studies today?</p>
+                    <div class="suggestions" id="welcome-suggestions">
                         <button onclick="quickAction('Explain a 2nd order low-pass filter')">Low-Pass Filters</button>
-                        <button
-                            onclick="quickAction('Explain the operating principle of an Op-Amp')">Op-Amps</button>
+                        <button onclick="quickAction('Explain the operating principle of an Op-Amp')">Op-Amps</button>
                         <button onclick="quickAction('Generate a simple circuit in LaTeX (Circuitikz)')">LaTeX Circuit</button>
                     </div>
                 </div>
@@ -85,11 +87,32 @@
             <footer class="chat-input-area">
                 <div class="input-wrapper">
                     <textarea id="user-input" placeholder="Type your question here..." rows="1"></textarea>
-                    <button id="send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                    <button id="send-btn" class="send-btn" title="Send message"><i class="fas fa-paper-plane"></i></button>
                 </div>
-                <p class="footer-note">Qwen2.5 3B | Local Offline Inference</p>
+                <p class="footer-note" id="footer-note">Qwen2.5 3B | Local Offline Inference</p>
             </footer>
         </main>
+    </div>
+    
+    <!-- Files Management Modal -->
+    <div id="files-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h3><i class="fas fa-folder-open"></i> Uploaded Documents</h3>
+                <button class="close-modal" onclick="toggleFilesModal()">&times;</button>
+            </header>
+            <div class="modal-body">
+                <div class="file-filters">
+                    <button class="filter-btn active" onclick="filterFiles('all', this)">All</button>
+                    <button class="filter-btn" onclick="filterFiles('pdf', this)">PDF</button>
+                    <button class="filter-btn" onclick="filterFiles('md', this)">MD</button>
+                    <button class="filter-btn" onclick="filterFiles('txt', this)">TXT</button>
+                </div>
+                <div class="files-grid" id="files-grid">
+                    <!-- Files will be loaded here -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->

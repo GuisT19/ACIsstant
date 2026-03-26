@@ -116,7 +116,9 @@ async function loadChat(chatId, title) {
         messagesPane.innerHTML = '';
 
         if (messages.length === 0) {
-            messagesPane.innerHTML = `<div class="welcome-screen"><h2>Chat started: ${title}</h2><p>I am ready for your questions.</p></div>`;
+            const titleMsg = currentLanguage === 'pt-PT' ? 'Chat iniciado' : 'Chat started';
+            const subMsg = currentLanguage === 'pt-PT' ? 'Estou pronto para as tuas dúvidas.' : 'I am ready for your questions.';
+            messagesPane.innerHTML = `<div class="welcome-screen"><h2>${titleMsg}: ${title}</h2><p>${subMsg}</p></div>`;
         } else {
             messages.forEach(msg => appendMessage(msg.role, msg.content));
         }
@@ -268,6 +270,71 @@ async function sendMessage() {
 
 function updateLanguage() {
     currentLanguage = document.getElementById('lang-select').value;
+    
+    // UI Elements translation map
+    const translations = {
+        'en-US': {
+            'btn-new-chat': '<i class="fas fa-plus"></i> New Chat',
+            'btn-upload': '<i class="fas fa-file-upload"></i> Upload & Index RAG',
+            'btn-files': '<i class="fas fa-folder-open"></i> Files',
+            'model-status': 'Model Ready (Qwen 3B)',
+            'current-chat-title': currentChatId ? document.getElementById('current-chat-title').innerText : 'Welcome',
+            'welcome-title': 'Hello!',
+            'welcome-subtitle': 'How can I help you with your Electronics and Signals studies today?',
+            'footer-note': 'Qwen2.5 3B | Local Offline Inference',
+            'user-input-placeholder': 'Type your question here...',
+            'modal-title': '<i class="fas fa-folder-open"></i> Uploaded Documents',
+            'suggestions': [
+                { text: 'Low-Pass Filters', query: 'Explain a 2nd order low-pass filter' },
+                { text: 'Op-Amps', query: 'Explain the operating principle of an Op-Amp' },
+                { text: 'LaTeX Circuit', query: 'Generate a simple circuit in LaTeX (Circuitikz)' }
+            ]
+        },
+        'pt-PT': {
+            'btn-new-chat': '<i class="fas fa-plus"></i> Novo Chat',
+            'btn-upload': '<i class="fas fa-file-upload"></i> Carregar e Indexar RAG',
+            'btn-files': '<i class="fas fa-folder-open"></i> Ficheiros',
+            'model-status': 'Modelo Pronto (Qwen 3B)',
+            'current-chat-title': currentChatId ? document.getElementById('current-chat-title').innerText : 'Bem-vindo',
+            'welcome-title': 'Olá!',
+            'welcome-subtitle': 'Como posso ajudar nos teus estudos de Eletrónica e Sinais hoje?',
+            'footer-note': 'Qwen2.5 3B | Inferência Local Offline',
+            'user-input-placeholder': 'Escreve a tua pergunta aqui...',
+            'modal-title': '<i class="fas fa-folder-open"></i> Documentos Carregados',
+            'suggestions': [
+                { text: 'Filtros Passa-Baixo', query: 'Explica um filtro passa-baixo de 2ª ordem' },
+                { text: 'Amps-Op', query: 'Explica o princípio de funcionamento de um Amp-Op' },
+                { text: 'Circuito LaTeX', query: 'Gera um circuito simples em LaTeX (Circuitikz)' }
+            ]
+        }
+    };
+
+    const t = translations[currentLanguage];
+
+    // Apply translations
+    document.getElementById('btn-new-chat').innerHTML = t['btn-new-chat'];
+    document.getElementById('btn-upload').innerHTML = t['btn-upload'];
+    document.getElementById('btn-files').innerHTML = t['btn-files'];
+    document.getElementById('model-status').innerText = t['model-status'];
+    if (!currentChatId) document.getElementById('current-chat-title').innerText = t['current-chat-title'];
+    
+    if (document.getElementById('welcome-screen')) {
+        document.getElementById('welcome-title').innerText = t['welcome-title'];
+        document.getElementById('welcome-subtitle').innerText = t['welcome-subtitle'];
+        
+        const suggs = document.getElementById('welcome-suggestions');
+        suggs.innerHTML = '';
+        t.suggestions.forEach(s => {
+            const btn = document.createElement('button');
+            btn.innerText = s.text;
+            btn.onclick = () => quickAction(s.query);
+            suggs.appendChild(btn);
+        });
+    }
+
+    document.getElementById('user-input').placeholder = t['user-input-placeholder'];
+    document.getElementById('footer-note').innerText = t['footer-note'];
+    document.querySelector('.modal-header h3').innerHTML = t['modal-title'];
 }
 
 function quickAction(text) {
@@ -359,4 +426,80 @@ async function deleteChat(evt, chatId) {
 function showSettings() {
     // Simple hardware info for now
     alert("ACIsstant Hardware Settings:\n\nMode: Auto-Optimize\nCPU Threads: Automatic (Detected Cores - 1)\nContext Window: Scaling by RAM (4k-32k)\n\nTo change manual settings, edit 'backend/llm.py'. UI control coming soon in V2!");
+}
+
+/* --- Files Management Logic --- */
+let allFiles = [];
+
+async function toggleFilesModal() {
+    const modal = document.getElementById('files-modal');
+    if (modal.style.display === 'none') {
+        modal.style.display = 'flex';
+        await loadUploadedFiles();
+    } else {
+        modal.style.display = 'none';
+    }
+}
+
+async function loadUploadedFiles() {
+    const grid = document.getElementById('files-grid');
+    grid.innerHTML = '<div class="loader">Loading files...</div>';
+    
+    try {
+        const res = await fetch(`${API_BASE.replace('/api', '')}/api/files`);
+        allFiles = await res.json();
+        renderFiles(allFiles);
+    } catch (err) {
+        console.error("Failed to load files:", err);
+        grid.innerHTML = '<div class="error">Error loading files.</div>';
+    }
+}
+
+function renderFiles(files) {
+    const grid = document.getElementById('files-grid');
+    grid.innerHTML = '';
+    
+    if (files.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">No files found.</div>';
+        return;
+    }
+    
+    files.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        
+        let iconClass = 'fa-file-alt';
+        if (file.extension === 'pdf') iconClass = 'fa-file-pdf';
+        if (file.extension === 'md') iconClass = 'fa-file-code';
+        if (['jpg', 'png', 'svg'].includes(file.extension)) iconClass = 'fa-file-image';
+        
+        card.innerHTML = `
+            <i class="fas ${iconClass} file-icon"></i>
+            <div class="file-name" title="${file.name}">${file.name}</div>
+            <div class="file-actions">
+                <button class="file-btn btn-open" onclick="openFile('${file.path}')">
+                    <i class="fas fa-external-link-alt"></i> Open
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function filterFiles(ext, btn) {
+    // Update active state of buttons
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    
+    if (ext === 'all') {
+        renderFiles(allFiles);
+    } else {
+        const filtered = allFiles.filter(f => f.extension === ext);
+        renderFiles(filtered);
+    }
+}
+
+function openFile(path) {
+    const url = `${API_BASE.replace('/api', '')}/api/files/download/${path}`;
+    window.open(url, '_blank');
 }
