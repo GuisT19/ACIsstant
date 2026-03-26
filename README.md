@@ -4,21 +4,27 @@ A powerful, fully offline, and portable AI assistant optimized for Windows 11. S
 
 ---
 
-## ⚡ Quick Start (Windows 11)
+## ⚡ Quick Start
 
-**Prerequisite:** [Python 3.10 or higher](https://www.python.org/downloads/) must be installed. (Make sure to check **"Add Python to PATH"** during installation).
+### Windows 11
+**Prerequisite:** [Python 3.10+](https://www.python.org/downloads/). (Check **"Add Python to PATH"**).
+1.  **Install**: Run `install_windows.bat`.
+2.  **Model**: `venv\Scripts\python download_model.py`.
+3.  **Run**: `run.bat`.
 
-**1. Install Environment**
-Double-click `install_windows.bat`. This creates a local virtual environment and installs all dependencies (FastAPI, Llama-cpp, LangChain, etc.).
-
-**2. Download AI Model**
-Run the following in a terminal to download the Qwen2.5 3B model (~2.3 GB):
-```bat
-venv\Scripts\python download_model.py
-```
-
-**3. Run ACIsstant**
-Double-click `run.bat`. The assistant will start on `http://localhost:8000`.
+### Arch Linux (or other Distros)
+**Prerequisite:** `python` and `venv` must be installed.
+1.  **Install**:
+    ```bash
+    chmod +x install_arch.sh
+    ./install_arch.sh
+    ```
+2.  **Model**: `venv/bin/python download_model.py`.
+3.  **Run**:
+    ```bash
+    chmod +x run.sh
+    ./run.sh
+    ```
 
 ---
 
@@ -58,7 +64,10 @@ All conversations are stored in a local **SQLite** database. You can create, ren
 | `frontend/` | Web UI (HTML/JS/CSS) |
 | `data/uploads/` | Place your study PDFs here |
 | `models/` | AI Model storage |
-| `run.bat` | The main launcher |
+| `install_windows.bat` | Installer (Windows) |
+| `install_arch.sh` | Installer (Arch Linux) |
+| `run.bat` | Launcher (Windows) |
+| `run.sh` | Launcher (Arch Linux) |
 
 ---
 *Created for Engineering Students & Professionals.*
