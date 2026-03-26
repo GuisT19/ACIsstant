@@ -16,6 +16,10 @@
     <!-- KaTeX CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
 
+    <!-- TikzJax for Circuit Diagrams -->
+    <link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">
+    <script src="https://tikzjax.com/v1/tikzjax.js"></script>
+
     <!-- Marked and internal styles -->
     <link rel="stylesheet" href="static/style.css">
 </head>
@@ -54,6 +58,9 @@
                     <h3 id="current-chat-title">Welcome</h3>
                 </div>
                 <div class="chat-actions">
+                    <button class="icon-btn" onclick="showSettings()" title="Hardware Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
                     <select id="lang-select" onchange="updateLanguage()">
                         <option value="en-US">EN-US</option>
                         <option value="pt-PT">PT-PT</option>

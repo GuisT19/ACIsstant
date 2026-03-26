@@ -14,13 +14,32 @@ class LLMManager:
             print(f"[LLM] Model not found at {self.model_path}. Please download it first.")
             self.llm = None
         else:
-            print(f"[LLM] Loading model: {self.model_path.name}")
+            import psutil # type: ignore
+            
+            # Detect hardware
+            physical_cores = psutil.cpu_count(logical=False) or 4
+            total_ram_gb = psutil.virtual_memory().total / (1024**3)
+            
+            # Optimization logic:
+            # - Use physical cores minus 1 (stay cool) but at least 4
+            n_threads = max(4, min(8, physical_cores - 1))
+            
+            # - Scale context by RAM (24GB total means we can go high)
+            if total_ram_gb >= 16:
+                n_ctx = 32768
+            elif total_ram_gb >= 8:
+                n_ctx = 8192
+            else:
+                n_ctx = 4096
+                
+            print(f"[LLM] HW Auto-Optimize: {n_threads} threads, {n_ctx} context (Detected {int(total_ram_gb)}GB RAM)")
+            
             # GGML_QUIET suppresses C-level llama.cpp output without breaking ctypes callbacks
             os.environ["GGML_QUIET"] = "1"
             self.llm = Llama(
                 model_path=str(self.model_path),
-                n_threads=6,
-                n_ctx=32768,   # High context window (uses more of the 24GB RAM)
+                n_threads=n_threads,
+                n_ctx=n_ctx,
                 n_batch=512,
                 verbose=False
             )

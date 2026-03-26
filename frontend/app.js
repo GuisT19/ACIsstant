@@ -121,6 +121,7 @@ async function loadChat(chatId, title) {
             messages.forEach(msg => appendMessage(msg.role, msg.content));
         }
         renderMathInPane(messagesPane);
+        renderCircuits(messagesPane);
     } catch (err) {
         console.error("Failed to load messages:", err);
         messagesPane.innerHTML = 'Error loading messages.';
@@ -138,6 +139,28 @@ function renderMathInPane(element) {
             ],
             throwOnError: false
         });
+    }
+}
+
+function renderCircuits(element) {
+    // Look for Tikz code blocks in the element
+    const codeBlocks = element.querySelectorAll('code.language-latex, code.language-tex');
+    codeBlocks.forEach(block => {
+        const content = block.innerText;
+        if (content.includes('\\begin{circuitikz}') || content.includes('\\begin{tikzpicture}')) {
+            const tikzScript = document.createElement('script');
+            tikzScript.type = 'text/tikz';
+            tikzScript.textContent = content;
+            block.parentElement.replaceWith(tikzScript);
+        }
+    });
+
+    // Re-trigger TikzJax if it's already loaded
+    if (window.Litz) {
+        // TikzJax handles global scripts automatically, but for dynamic content
+        // we might need to trigger a re-run if TikzJax supports it.
+        // Actually TikzJax (v1) observes DOM changes if configured, 
+        // or we can just let it find the new scripts.
     }
 }
 
@@ -228,6 +251,7 @@ async function sendMessage() {
             const bodyEl = assistantMsgDiv.querySelector('.ai-body');
             bodyEl.innerHTML = marked.parse(fullContent);
             renderMathInPane(bodyEl);
+            renderCircuits(bodyEl);
 
             if (isScrolledToBottom) {
                 pane.scrollTop = pane.scrollHeight;
@@ -330,4 +354,9 @@ async function deleteChat(evt, chatId) {
     } catch (err) {
         console.error("Failed to delete chat:", err);
     }
+}
+
+function showSettings() {
+    // Simple hardware info for now
+    alert("ACIsstant Hardware Settings:\n\nMode: Auto-Optimize\nCPU Threads: Automatic (Detected Cores - 1)\nContext Window: Scaling by RAM (4k-32k)\n\nTo change manual settings, edit 'backend/llm.py'. UI control coming soon in V2!");
 }
