@@ -1,14 +1,21 @@
+# Core Web Framework
 fastapi
 uvicorn
-llama-cpp-python
 pydantic
+python-multipart
+
+# LLM Engine and Inference
+llama-cpp-python
+huggingface_hub
+
+# RAG and Document Processing
 langchain
 langchain-community
 langchain-text-splitters
 langchain-huggingface
 faiss-cpu
 sentence-transformers
-huggingface_hub
-python-multipart
-psutil
 pypdf
+
+# Hardware Optimization and Utilities
+psutil

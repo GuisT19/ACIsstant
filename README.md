@@ -1,26 +1,58 @@
 # ACIsstant: Local AI Engineering Assistant
 
-A powerful, fully offline, and portable AI assistant optimized for Windows 11. Specialized in **Electronics Engineering, Signals & Systems, Physics, and Mathematics**.
+ACIsstant is a specialized, fully offline AI engineering assistant optimized for Windows and Linux systems. It provides high-performance local inference tailored for Electronics Engineering, Signals and Systems, Physics, and Mathematics, ensuring all data remains on your machine.
 
 ---
 
-## ⚡ Quick Start
+## Key Features
 
-### Windows 11
-**Prerequisite:** [Python 3.10+](https://www.python.org/downloads/). (Check **"Add Python to PATH"**).
-1.  **Install**: Run `install_windows.bat`.
-2.  **Model**: `venv\Scripts\python download_model.py`.
-3.  **Run**: `run.bat`.
+### Hardware Optimization
+The application automatically detects system resources—including RAM and CPU cores—upon startup. It adjusts the context window (up to 32k tokens) and optimizes thread counts to ensure efficient performance on your specific hardware.
 
-### Arch Linux (or other Distros)
-**Prerequisite:** `python` and `venv` must be installed.
-1.  **Install**:
+### Scientific Notation and Formulas
+ACIsstant includes comprehensive support for LaTeX equations. Mathematical formulas are rendered via KaTeX, providing clear and professional visualization of complex expressions directly within the chat interface.
+
+### Circuit Diagram Generation
+The assistant can generate and render circuit diagrams. Utilizing Circuitikz and TikzJax, requested diagrams are produced as high-quality SVG images within the browser environment.
+
+### Retrieval-Augmented Generation (RAG)
+Users can upload documents in PDF, Markdown, or TXT formats. ACIsstant indexes these materials locally using FAISS and Sentence-Transformers, enabling accurate, context-aware responses based on private study materials.
+
+### Local Conversation Management
+All chat history is stored in a local SQLite database. This allows for secure management, renaming, and retrieval of past conversations without an internet connection.
+
+---
+
+## Technical Specifications
+
+*   **Model:** Qwen2.5 3B Instruct (GGUF Q4_K_M)
+*   **Inference Engine:** llama-cpp-python
+*   **Backend:** FastAPI
+*   **Frontend:** Vanilla HTML/JS/CSS with KaTeX and Highlight.js
+*   **Vector Database:** FAISS
+*   **Privacy:** 100% Offline; no telemetry or external data transmission.
+
+---
+
+## Installation and Setup
+
+### Windows
+**Prerequisite:** Python 3.10 or higher (must be added to the system PATH).
+
+1.  **Install Dependencies:** Run `install_windows.bat`.
+2.  **Download Model:** Execute `venv\Scripts\python download_model.py`.
+3.  **Start Application:** Run `run.bat`.
+
+### Linux (Arch and other distributions)
+**Prerequisite:** Python and virtual environment (venv) support.
+
+1.  **Install Dependencies:**
     ```bash
     chmod +x install_arch.sh
     ./install_arch.sh
     ```
-2.  **Model**: `venv/bin/python download_model.py`.
-3.  **Run**:
+2.  **Download Model:** Execute `venv/bin/python download_model.py`.
+3.  **Start Application:**
     ```bash
     chmod +x run.sh
     ./run.sh
@@ -28,46 +60,23 @@ A powerful, fully offline, and portable AI assistant optimized for Windows 11. S
 
 ---
 
-## 🚀 Key Features
+## Project Structure
 
-### 🛠️ Hardware Auto-Optimization
-ACIsstant automatically detects your machine's **RAM** and **CPU Cores** on startup. It scales the context window (up to **32k tokens**) and thread count to ensure the best performance for your specific hardware (e.g., optimized for 24GB RAM machines like the T480s).
-
-### 📐 Scientific Math & Formulas
-Full support for **LaTeX** equations. Using **KaTeX**, ACIsstant renders complex mathematical formulas beautifully in the chat interface. Use `$$` for blocks and `$` for inline math.
-
-### 🔌 Circuit Diagrams (SVG)
-The assistant can generate real circuit diagrams! When you ask for a circuit (e.g., *"Draw an inverted Op-Amp circuit"*), it generates **Circuitikz** code which is instantly rendered as a high-quality **SVG diagram** in the browser using **TikzJax**.
-
-### 📚 RAG (Knowledge Context)
-Upload your PDFs, Markdown, or TXT study materials via the UI. ACIsstant indexes them locally using **FAISS** and **Sentence-Transformers** to provide accurate answers based on your own documents.
-
-### 💬 Local History & Multi-Chat
-All conversations are stored in a local **SQLite** database. You can create, rename, and delete chats anytime.
+| Directory/File | Description |
+| :--- | :--- |
+| `backend/` | Application logic, LLM engine, and RAG implementation. |
+| `frontend/` | Web-based user interface components. |
+| `data/uploads/` | Storage for documents used in RAG indexing. |
+| `models/` | Storage for model GGUF files. |
+| `install_windows.bat` | Automated installation script for Windows. |
+| `run.bat` | Startup script for Windows systems. |
 
 ---
 
-## 🛠️ Performance & Support
+## Performance Notes
 
-- **Model:** Qwen2.5 3B Instruct (GGUF Q4_K_M).
-- **Latency:** ~5-15 tokens/sec on modern CPUs (using AVX2/AVX512).
-- **Offline:** 100% private. No data leaves your machine.
-- **Language:** Default is **English**, with full support for **European Portuguese**.
+*   **Latency:** Approximately 5-15 tokens per second on modern CPUs using AVX2 or AVX512 instruction sets.
+*   **Language Support:** Optimized for English with support for European Portuguese.
 
 ---
-
-## 📂 Project Structure
-
-| Path | Description |
-|---|---|
-| `backend/` | FastAPI server, LLM engine & RAG logic |
-| `frontend/` | Web UI (HTML/JS/CSS) |
-| `data/uploads/` | Place your study PDFs here |
-| `models/` | AI Model storage |
-| `install_windows.bat` | Installer (Windows) |
-| `install_arch.sh` | Installer (Arch Linux) |
-| `run.bat` | Launcher (Windows) |
-| `run.sh` | Launcher (Arch Linux) |
-
----
-*Created for Engineering Students & Professionals.*
+*Created for Engineering Students and Professionals.*
