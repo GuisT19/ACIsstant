@@ -503,3 +503,26 @@ function openFile(path) {
     const url = `${API_BASE.replace('/api', '')}/api/files/download/${path}`;
     window.open(url, '_blank');
 }
+
+// Global Hotkeys
+window.addEventListener('keydown', async (e) => {
+    // Ctrl+R to Restart AI
+    if (e.ctrlKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        console.log("ACIsstant: Hot-Restart Triggered (Ctrl+R)");
+        try {
+            await fetch(`${API_BASE.replace('/api', '')}/api/restart`, { method: 'POST' });
+            // Show a small overlay or just wait for the server to die
+            document.body.innerHTML = `
+                <div style="background:#000; color:#a855f7; height:100vh; display:flex; align-items:center; justify-content:center; font-family:sans-serif; flex-direction:column; gap:20px;">
+                    <i class="fas fa-sync fa-spin" style="font-size:3rem;"></i>
+                    <h1>Restarting ACIsstant...</h1>
+                    <p>The server is rebooting. This page will refresh automatically.</p>
+                </div>
+            `;
+            setTimeout(() => location.reload(), 5000);
+        } catch (err) {
+            console.error("Restart failed", err);
+        }
+    }
+});

@@ -35,6 +35,14 @@ class RAGManager:
             model_kwargs=_kwargs,
         )
         self.vector_store = None
+        
+        # Auto-scan and build on startup to ensure RAG is never empty
+        if self.data_dir.exists():
+            valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
+            if valid_files:
+                print(f"[RAG] Startup scan: {len(valid_files)} documents found. Synchronizing...")
+                self.process_documents()
+        
         self.load_index()
 
     def load_index(self):

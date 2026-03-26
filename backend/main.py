@@ -1,6 +1,10 @@
-import os
 import warnings
+import os
+import threading
+import msvcrt
+import signal
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 # Suppress noisy third-party warnings before any imports
 warnings.filterwarnings("ignore")
@@ -18,13 +22,36 @@ from fastapi.middleware.cors import CORSMiddleware # type: ignore
 from fastapi.staticfiles import StaticFiles # type: ignore
 from pydantic import BaseModel # type: ignore
 from typing import List, Optional, Dict
+import threading
+import msvcrt
+import signal
 
 from backend.llm import LLMManager
 from backend.database import ChatDB
 from backend.rag import RAGManager
 
 # --- API initialization ---
-app = FastAPI(title="ACIsstant Local AI Engineering Assistant")
+def terminal_watcher():
+    """Listens for Ctrl+R in the terminal window to restart the AI."""
+    while True:
+        if msvcrt.kbhit(): # type: ignore
+            ch = msvcrt.getch() # type: ignore
+            # Ctrl+R is character 18 (0x12) in binary mode on Windows
+            if ch == b'\x12' or ch == b'\x12\r':
+                print("\n  [!!] HOTKEY: Ctrl+R detected! Restarting ACIsstant...")
+                os.kill(os.getpid(), signal.SIGTERM)
+                break
+        import time
+        time.sleep(0.1)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Start the hotkey watcher thread
+    t = threading.Thread(target=terminal_watcher, daemon=True)
+    t.start()
+    yield
+
+app = FastAPI(title="ACIsstant Local AI Engineering Assistant", lifespan=lifespan)
 
 # CORS for local frontend
 app.add_middleware(
@@ -68,14 +95,14 @@ async def create_chat(title: str = Form("New Chat")):
 async def get_messages(chat_id: str):
     return db.get_messages(chat_id)
 
+def log_step(step_name: str, indent: int = 0):
+    prefix = "  " * indent
+    print(f"{prefix}[..] {step_name}")
+
 @app.post("/api/chat/stream")
 async def chat_stream(request: ChatRequest):
     chat_id = request.chat_id
     user_msg = request.message
-    
-    def log_step(step_name: str, indent: int = 0):
-        prefix = "  " * indent
-        print(f"{prefix}[..] {step_name}")
 
     log_step(f"Request: {str(user_msg)[:50]}...") # type: ignore
     
@@ -83,6 +110,14 @@ async def chat_stream(request: ChatRequest):
     db.add_message(chat_id, "user", user_msg)
     
     past_messages = db.get_messages(chat_id)
+
+    # File Inventory Awareness
+    upload_dir = Path("data/uploads")
+    all_files = [f.name for f in upload_dir.rglob("*") if f.is_file() and f.name != "README.md"]
+    if request.language == "pt-PT":
+        inventory_msg = f"Tens {len(all_files)} ficheiros disponíveis na tua base de dados: " + ", ".join(all_files) if all_files else "Não tens ficheiros carregados na base de dados."
+    else:
+        inventory_msg = f"You have {len(all_files)} files available in your knowledge base: " + ", ".join(all_files) if all_files else "No files are currently in your knowledge base."
 
     # RAG Retrieval
     log_step("Retrieving context from RAG...", 1)
@@ -95,6 +130,7 @@ async def chat_stream(request: ChatRequest):
     
     # Prepare messages for LLM
     system_prompt = llm_manager.get_system_prompt(request.language)
+    system_prompt += f"\n\n[INFO] {inventory_msg}"
     
     if context:
         if request.language == "pt-PT":
@@ -185,6 +221,14 @@ async def trigger_index():
         return {"status": "success", "message": "Documents indexed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/restart")
+async def restart_server():
+    log_step("API: Restart signal received.")
+    import os
+    import signal
+    os.kill(os.getpid(), signal.SIGTERM)
+    return {"status": "restarting"}
 
 if __name__ == "__main__":
     import uvicorn # type: ignore
