@@ -88,8 +88,12 @@ async function createNewChat(titleOpt = null) {
         });
         const data = await res.json();
         currentChatId = data.chat_id;
-        loadChat(data.chat_id, data.title);
-        loadChatList();
+        
+        // Immediate activation: update UI before returning
+        document.getElementById('current-chat-title').innerText = data.title;
+        document.getElementById('chat-messages').innerHTML = ''; 
+        
+        loadChatList(); 
         return currentChatId;
     } catch (err) {
         console.error("Failed to create chat:", err);
@@ -137,7 +141,11 @@ function renderMathInPane(element) {
                 { left: "$$", right: "$$", display: true },
                 { left: "$", right: "$", display: false },
                 { left: "\\(", right: "\\)", display: false },
-                { left: "\\[", right: "\\]", display: true }
+                { left: "\\[", right: "\\]", display: true },
+                { left: "\\begin{equation}", right: "\\end{equation}", display: true },
+                { left: "\\begin{align}", right: "\\end{align}", display: true },
+                { left: "\\begin{gather}", right: "\\end{gather}", display: true },
+                { left: "\\begin{CD}", right: "\\end{CD}", display: true }
             ],
             throwOnError: false
         });
@@ -232,32 +240,72 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let isFirstChunk = true;
+        let chunkCount = 0;
+        const chatIdAtStart = currentChatId;
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
+            // Stop updating UI if user switched chats
+            if (currentChatId !== chatIdAtStart) {
+                // We let the loop finish to capture fullContent for the DB
+                const chunk = decoder.decode(value, { stream: true });
+                fullContent += chunk;
+                continue;
+            }
+
             const chunk = decoder.decode(value, { stream: true });
             fullContent += chunk;
+            chunkCount++;
 
             if (isFirstChunk) {
-                // Clear the typing indicator
                 assistantMsgDiv.querySelector('.ai-body').innerHTML = '';
                 isFirstChunk = false;
             }
 
             const pane = document.getElementById('chat-messages');
-            // Check if user is already near the bottom before auto-scrolling
             const isScrolledToBottom = pane.scrollHeight - pane.clientHeight <= pane.scrollTop + 80;
 
             const bodyEl = assistantMsgDiv.querySelector('.ai-body');
-            bodyEl.innerHTML = marked.parse(fullContent);
-            renderMathInPane(bodyEl);
-            renderCircuits(bodyEl);
+            
+            let displayContent = fullContent;
+            let sourcesFound = "";
+            if (fullContent.includes("\n\nSOURCES: ")) {
+                const parts = fullContent.split("\n\nSOURCES: ");
+                displayContent = parts[0];
+                sourcesFound = parts[1];
+            }
+
+            bodyEl.innerHTML = marked.parse(displayContent);
+            
+            if (sourcesFound) {
+                let sourcesBox = assistantMsgDiv.querySelector('.sources-box');
+                if (!sourcesBox) {
+                    sourcesBox = document.createElement('div');
+                    sourcesBox.className = 'sources-box';
+                    assistantMsgDiv.appendChild(sourcesBox);
+                }
+                const label = currentLanguage === 'pt-PT' ? 'Fontes Utilizadas' : 'Sources Used';
+                sourcesBox.innerHTML = `<strong><i class="fas fa-book"></i> ${label}:</strong><br>${sourcesFound}`;
+            }
+
+            // Optimization: Only render math/circuits every 8 chunks to keep UI responsive
+            if (chunkCount % 8 === 0) {
+                renderMathInPane(bodyEl);
+                renderCircuits(bodyEl);
+            }
 
             if (isScrolledToBottom) {
                 pane.scrollTop = pane.scrollHeight;
             }
+        }
+        
+        // Final render to ensure everything is perfect
+        if (currentChatId === chatIdAtStart) {
+            const bodyEl = assistantMsgDiv.querySelector('.ai-body');
+            renderMathInPane(bodyEl);
+            renderCircuits(bodyEl);
         }
     } catch (err) {
         console.error("Streaming error:", err);

@@ -93,7 +93,7 @@ class RAGManager:
             return
 
         # Split
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
         docs = text_splitter.split_documents(documents)
         
         # Index
@@ -101,10 +101,11 @@ class RAGManager:
         self.vector_store.save_local(str(self.index_dir)) # type: ignore
         print(f"[RAG] Index saved to data/vectordb")
 
-    def query(self, text: str, k: int = 3) -> str:
+    def query(self, text: str, k: int = 3) -> tuple[str, List[str]]:
         if not self.vector_store:
-            return ""
+            return "", []
         
         docs = self.vector_store.similarity_search(text, k=k) # type: ignore
         context = "\n---\n".join([doc.page_content for doc in docs])
-        return context
+        sources = list(set([os.path.basename(doc.metadata.get('source', 'Unknown')) for doc in docs]))
+        return context, sources

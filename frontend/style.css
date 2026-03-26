@@ -691,3 +691,20 @@ pre code {
 .btn-open:hover {
     background: rgba(59, 130, 246, 0.2);
 }
+.sources-box {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: rgba(168, 85, 247, 0.05);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    animation: fadeIn 0.5s ease;
+}
+
+.sources-box strong {
+    color: var(--accent-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}

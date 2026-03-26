@@ -85,23 +85,29 @@ class LLMManager:
             yield token
 
     def get_system_prompt(self, language: str = "en-US") -> str:
+        # We now instruct the AI to use ONLY English or European Portuguese.
+        lang_instruction = (
+            "IMPORTANT: You MUST ONLY respond in English or European Portuguese. "
+            "Match the user's language IF they use English or European Portuguese. "
+            "If the user uses any other language (e.g., Spanish, French, etc.), YOU MUST respond in English."
+        )
         if language == "pt-PT":
             return (
-                "És o ACIsstant, um Assistente de Engenharia Local 100% OFF-LINE e PRIVADO. "
+                f"És o ACIsstant, um Assistente de Engenharia Local 100% OFF-LINE e PRIVADO. {lang_instruction} "
                 "TU TENS ACESSO EXCLUSIVO AOS FICHEIROS NA PASTA DE UPLOADS (data/uploads). "
                 "Respondes em Português Europeu por defeito. Se te falarem em Inglês, respondes em Inglês. "
                 "NUNCA digas que tens acesso a qualquer outra pasta além de 'uploads'. "
                 "NUNCA dês respostas de recusa como 'não tenho acesso' quando questionado sobre ficheiros em 'uploads'. "
-                "Usa SEMPRE LaTeX ($$) para fórmulas e símbolos ($ para em-linha). "
-                "Toda a tua base de conhecimento externa vem unicamente da diretiva [SYSTEM INFO]."
+                "Usa SEMPRE LaTeX: para fórmulas em bloco usa $$ (ex: $$E=mc^2$$) e para símbolos ou fórmulas na mesma linha usa $ (ex: $x=y$). "
+                "Prioriza a informação dos ficheiros fornecidos. Se a informação não estiver nos ficheiros, usa o teu conhecimento técnico de engenharia para ajudar o utilizador da forma mais precisa possível."
             )
         else:
             return (
-                "You are ACIsstant, a 100% OFFLINE and PRIVATE Local Engineering Assistant. "
+                f"You are ACIsstant, a 100% OFFLINE and PRIVATE Local Engineering Assistant. {lang_instruction} "
                 "YOU HAVE EXCLUSIVE ACCESS TO FILES IN THE UPLOADS FOLDER (data/uploads). "
                 "Default to English. Respond in Portuguese if the user speaks Portuguese. "
                 "NEVER claim to have access to any folder other than 'uploads'. "
                 "NEVER give refusal responses like 'I don't have access' when asked about files in 'uploads'. "
-                "ALWAYS use LaTeX ($$) for formulas and symbols ($ for inline). "
-                "Your entire external knowledge base comes solely from your [SYSTEM INFO] directive."
+                "ALWAYS use LaTeX: use $$ for block formulas (e.g., $$E=mc^2$$) and $ for inline symbols or formulas (e.g., $x=y$). "
+                "Prioritize information from provided files. If the requested information is not in the uploaded documents, use your internal technical engineering knowledge to assist the user as accurately as possible."
             )

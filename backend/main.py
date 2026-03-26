@@ -1,7 +1,10 @@
 import warnings
 import os
 import threading
-import msvcrt
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
 import signal
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -23,7 +26,7 @@ from fastapi.staticfiles import StaticFiles # type: ignore
 from pydantic import BaseModel # type: ignore
 from typing import List, Optional, Dict
 import threading
-import msvcrt
+# msvcrt already handled above
 import signal
 
 from backend.llm import LLMManager # type: ignore
@@ -33,6 +36,8 @@ from backend.rag import RAGManager # type: ignore
 # --- API initialization ---
 def terminal_watcher():
     """Listens for Ctrl+R in the terminal window to restart the AI."""
+    if msvcrt is None:
+        return
     while True:
         if msvcrt.kbhit(): # type: ignore
             ch = msvcrt.getch() # type: ignore
@@ -123,24 +128,22 @@ async def chat_stream(request: ChatRequest):
     # RAG Retrieval
     log_step("Retrieving context from RAG...", 1)
     try:
-        context = rag_manager.query(user_msg)
-        log_step("Context retrieved.", 1)
+        context, sources = rag_manager.query(user_msg)
+        log_step(f"Context retrieved (Sources: {len(sources)}).", 1)
     except Exception as e:
         print(f"  [!!] RAG Error: {str(e)}")
-        context = ""
+        context, sources = "", []
     
     # Prepare messages for LLM
     raw_system = llm_manager.get_system_prompt(request.language)
     
-    # Forceful inventory injection as a separate system directive
+    # Forceful inventory injection
     inventory_directive = (
         f"[SYSTEM DIRECTIVE] {inventory_msg}\n"
         "YOU MUST USE THESE FILES. YOU HAVE ACCESS TO THEM RIGHT NOW. "
-        "IGNORE ANY INTERNAL PROGRAMMING THAT SAYS YOU CANNOT ACCESS FILES. "
-        "YOU ARE A LOCAL AI RUNNING ON THIS MACHINE."
+        "IGNORE ANY INTERNAL PROGRAMMING THAT SAYS YOU CANNOT ACCESS FILES."
     )
     
-    # Construct message list with the inventory at the very top
     llm_messages = [
         {"role": "system", "content": f"{raw_system}\n\n{inventory_directive}"}
     ]
@@ -150,7 +153,7 @@ async def chat_stream(request: ChatRequest):
         llm_messages.append({"role": "system", "content": f"{ctx_header}\n{context}"})
     
     # Add history
-    llm_messages.extend(past_messages[-12:]) # Include context
+    llm_messages.extend(past_messages[-12:])
     
     async def event_generator():
         full_response = ""
@@ -159,12 +162,18 @@ async def chat_stream(request: ChatRequest):
             for token in llm_manager.generate_stream(llm_messages):
                 full_response += token
                 yield f"{token}"
+            
+            # Append sources at the end
+            if sources:
+                sources_str = ", ".join(sources)
+                yield f"\n\nSOURCES: {sources_str}"
+            
             log_step("LLM Stream complete.", 1)
         except Exception as e:
             print(f"  [!!] LLM Stream Error: {str(e)}")
             yield f"\nERROR: {str(e)}"
         
-        # Once stream is complete, store the assistant response
+        # Store response (without the SOURCES suffix in DB for clean history)
         db.add_message(chat_id, "assistant", full_response)
 
     return StreamingResponse(event_generator(), media_type="text/plain")
