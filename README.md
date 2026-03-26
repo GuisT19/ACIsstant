@@ -1,107 +1,64 @@
-# Antigravity: Local AI Engineering Assistant
+# ACIsstant: Local AI Engineering Assistant
 
-A fully offline, portable AI assistant running on CPU. Specialised in Electronics, Signals, Physics and Mathematics.
+A powerful, fully offline, and portable AI assistant optimized for Windows 11. Specialized in **Electronics Engineering, Signals & Systems, Physics, and Mathematics**.
 
 ---
 
-## Getting Started
+## ⚡ Quick Start (Windows 11)
 
-### Windows 11
+**Prerequisite:** [Python 3.10 or higher](https://www.python.org/downloads/) must be installed. (Make sure to check **"Add Python to PATH"** during installation).
 
-**Prerequisite:** [Python 3.10 or higher](https://www.python.org/downloads/) must be installed.
-During installation, make sure to check the **"Add Python to PATH"** option.
+**1. Install Environment**
+Double-click `install_windows.bat`. This creates a local virtual environment and installs all dependencies (FastAPI, Llama-cpp, LangChain, etc.).
 
-**Step 1 — Install dependencies**
-
-Double-click `install_windows.bat` or run it from a terminal:
-
-```bat
-install_windows.bat
-```
-
-This script will:
-- Create an isolated virtual environment (`venv`) in the project folder
-- Install all Python dependencies inside that `venv` (nothing is installed globally)
-- Create the required directories (`models/`, `data/uploads/`, `data/vectordb/`)
-
-**Step 2 — Download the AI model**
-
+**2. Download AI Model**
+Run the following in a terminal to download the Qwen2.5 3B model (~2.3 GB):
 ```bat
 venv\Scripts\python download_model.py
 ```
 
-This downloads the Qwen2.5 3B GGUF model (~2.3 GB) into the `models/` folder.
-
-**Step 3 — Start the assistant**
-
-Double-click `run.bat` or run it from a terminal:
-
-```bat
-run.bat
-```
-
-**Step 4 — Open the interface**
-
-Open your browser and go to `http://localhost:8000`.
+**3. Run ACIsstant**
+Double-click `run.bat`. The assistant will start on `http://localhost:8000`.
 
 ---
 
-### Arch Linux
+## 🚀 Key Features
 
-**Step 1 — Install and configure the environment**
+### 🛠️ Hardware Auto-Optimization
+ACIsstant automatically detects your machine's **RAM** and **CPU Cores** on startup. It scales the context window (up to **32k tokens**) and thread count to ensure the best performance for your specific hardware (e.g., optimized for 24GB RAM machines like the T480s).
 
-```bash
-chmod +x install_arch.sh
-./install_arch.sh
-```
+### 📐 Scientific Math & Formulas
+Full support for **LaTeX** equations. Using **KaTeX**, ACIsstant renders complex mathematical formulas beautifully in the chat interface. Use `$$` for blocks and `$` for inline math.
 
-**Step 2 — Download the AI model**
+### 🔌 Circuit Diagrams (SVG)
+The assistant can generate real circuit diagrams! When you ask for a circuit (e.g., *"Draw an inverted Op-Amp circuit"*), it generates **Circuitikz** code which is instantly rendered as a high-quality **SVG diagram** in the browser using **TikzJax**.
 
-```bash
-venv/bin/python download_model.py
-```
+### 📚 RAG (Knowledge Context)
+Upload your PDFs, Markdown, or TXT study materials via the UI. ACIsstant indexes them locally using **FAISS** and **Sentence-Transformers** to provide accurate answers based on your own documents.
 
-**Step 3 — Start the assistant**
-
-```bash
-./run.sh
-```
-
-**Step 4 — Open the interface**
-
-Open your browser and go to `http://localhost:8000`.
+### 💬 Local History & Multi-Chat
+All conversations are stored in a local **SQLite** database. You can create, rename, and delete chats anytime.
 
 ---
 
-## Features
+## 🛠️ Performance & Support
 
-- **Engineering Assistant**: Expert in Electronics, Signals, Physics and Mathematics.
-- **RAG (Knowledge Context)**: Place your PDFs and Markdown files in `data/uploads/`. The assistant will use them to answer your questions with relevant context.
-- **Multi-Chat**: Create and manage multiple conversations stored locally in SQLite.
-- **Circuit Diagrams**: Ask for circuit diagrams and it will generate Circuitikz (LaTeX) or SPICE netlists.
-- **Multilingual**: Supports European Portuguese and English.
-
----
-
-## Performance Notes (CPU-Only)
-
-- The **Qwen2.5 3B** model is the recommended choice for CPU-only machines.
-- Expect approximately 5-10 tokens per second on a mid-range CPU (e.g. Intel Core i5/i7 4-core).
-- RAG keeps responses contextually accurate without overloading RAM.
+- **Model:** Qwen2.5 3B Instruct (GGUF Q4_K_M).
+- **Latency:** ~5-15 tokens/sec on modern CPUs (using AVX2/AVX512).
+- **Offline:** 100% private. No data leaves your machine.
+- **Language:** Default is **English**, with full support for **European Portuguese**.
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 | Path | Description |
 |---|---|
-| `backend/` | FastAPI server, LLM engine and RAG logic |
-| `frontend/` | Web interface (HTML/JS/CSS) |
-| `models/` | GGUF model files are stored here |
-| `data/uploads/` | Place your study materials here (PDF, Markdown, TXT) |
-| `data/vectordb/` | Auto-generated FAISS vector index |
-| `install_windows.bat` | Installer script for Windows 11 |
-| `install_arch.sh` | Installer script for Arch Linux |
-| `run.bat` | Launch script for Windows |
-| `run.sh` | Launch script for Arch Linux |
-| `download_model.py` | Script to download the AI model |
+| `backend/` | FastAPI server, LLM engine & RAG logic |
+| `frontend/` | Web UI (HTML/JS/CSS) |
+| `data/uploads/` | Place your study PDFs here |
+| `models/` | AI Model storage |
+| `run.bat` | The main launcher |
+
+---
+*Created for Engineering Students & Professionals.*
