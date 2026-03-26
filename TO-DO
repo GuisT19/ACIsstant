@@ -1,0 +1,7 @@
+[DONE] -Fazer com que o ai meta as fórmulas matemáticas como deve ser (experimenta utilizar o mathlab) -> Done via KaTeX
+[DONE] -Traduzir tudo para inglês (por enquanto) -> UI and system prompt updated
+[DONE] -remover o teu antigravity que aparece quando abres no browser, substituir por USER ou assim -> Renamed to ACIsstant
+[DONE] -verificar se o ai limita a utilização de ram ou outra parte do hardware [..] -> Increased n_ctx to 32k
+-se der, fazer com que o ai ajuste a otimização dos recursos de hardware para cada máquina onde é instalado ou ter uma UI com opções para fazer isso manualmente (se calhar a segunda é melhor)
+-se o resto ficar feito, tentar fazer com que o gajo crie diagramas de circuitos quando pedido, de preferência gerando a imagem diretamente na caixa de texto com opção de download
+-criar erros com identação de forma a identificar as suas causas(basicamente debug) -> Basic logging implemented
