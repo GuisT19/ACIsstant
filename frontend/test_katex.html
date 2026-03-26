@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension/lib/index.umd.js"></script>
+</head>
+<body>
+  <script>
+    if (typeof markedKatex !== 'undefined') {
+        marked.use(markedKatex({ throwOnError: false }));
+    }
+    console.log(marked.parse('Block: $$x=1$$ Inline: $y=2$ Paren: \\(z=3\\) Bracket: \\[w=4\\]'));
+  </script>
+</body>
+</html>
