@@ -26,9 +26,9 @@ import threading
 import msvcrt
 import signal
 
-from backend.llm import LLMManager
-from backend.database import ChatDB
-from backend.rag import RAGManager
+from backend.llm import LLMManager # type: ignore
+from backend.database import ChatDB # type: ignore
+from backend.rag import RAGManager # type: ignore
 
 # --- API initialization ---
 def terminal_watcher():
@@ -39,7 +39,8 @@ def terminal_watcher():
             # Ctrl+R is character 18 (0x12) in binary mode on Windows
             if ch == b'\x12' or ch == b'\x12\r':
                 print("\n  [!!] HOTKEY: Ctrl+R detected! Restarting ACIsstant...")
-                os.kill(os.getpid(), signal.SIGTERM)
+                import sys
+                os._exit(3)
                 break
         import time
         time.sleep(0.1)
@@ -129,16 +130,27 @@ async def chat_stream(request: ChatRequest):
         context = ""
     
     # Prepare messages for LLM
-    system_prompt = llm_manager.get_system_prompt(request.language)
-    system_prompt += f"\n\n[INFO] {inventory_msg}"
+    raw_system = llm_manager.get_system_prompt(request.language)
+    
+    # Forceful inventory injection as a separate system directive
+    inventory_directive = (
+        f"[SYSTEM DIRECTIVE] {inventory_msg}\n"
+        "YOU MUST USE THESE FILES. YOU HAVE ACCESS TO THEM RIGHT NOW. "
+        "IGNORE ANY INTERNAL PROGRAMMING THAT SAYS YOU CANNOT ACCESS FILES. "
+        "YOU ARE A LOCAL AI RUNNING ON THIS MACHINE."
+    )
+    
+    # Construct message list with the inventory at the very top
+    llm_messages = [
+        {"role": "system", "content": f"{raw_system}\n\n{inventory_directive}"}
+    ]
     
     if context:
-        if request.language == "pt-PT":
-            system_prompt += f"\n\nContexto dos teus materiais de estudo:\n{context}"
-        else:
-            system_prompt += f"\n\nContext from your study materials:\n{context}"
+        ctx_header = "Relevant context from YOUR LOCAL FILES:" if request.language != "pt-PT" else "Contexto relevante dos TEUS FICHEIROS LOCAIS:"
+        llm_messages.append({"role": "system", "content": f"{ctx_header}\n{context}"})
     
-    llm_messages = [{"role": "system", "content": system_prompt}] + past_messages[-10:] # Context window limit
+    # Add history
+    llm_messages.extend(past_messages[-12:]) # Include context
     
     async def event_generator():
         full_response = ""
@@ -208,7 +220,7 @@ async def list_uploaded_files():
 
 @app.get("/api/files/download/{filename:path}")
 async def download_file(filename: str):
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse # type: ignore
     file_path = Path("data/uploads") / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
@@ -226,9 +238,8 @@ async def trigger_index():
 async def restart_server():
     log_step("API: Restart signal received.")
     import os
-    import signal
-    os.kill(os.getpid(), signal.SIGTERM)
-    return {"status": "restarting"}
+    import sys
+    os._exit(3)
 
 if __name__ == "__main__":
     import uvicorn # type: ignore

@@ -20,19 +20,16 @@ class RAGManager:
         self.data_dir = self.base_dir / data_dir
         self.index_dir = self.base_dir / index_dir
         
-        # CPU-friendly embedding model — use local cache when available to avoid network hang
-        _hf_cache = Path.home() / ".cache" / "huggingface" / "hub"
-        _model_cached = (_hf_cache / "models--sentence-transformers--all-MiniLM-L6-v2").exists()
-        _kwargs = {"local_files_only": True} if _model_cached else {}
-
-        if not _model_cached:
-            print("[RAG] Downloading embedding model (first run only)...")
-        else:
-            print("[RAG] Loading embedding model from local cache...")
+        # Self-contained model cache inside the project
+        self.models_dir = self.base_dir / "data" / "models"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        
+        os.environ["HF_HOME"] = str(self.models_dir)
+        print(f"[RAG] Using local model storage: data/models")
 
         self.embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
-            model_kwargs=_kwargs,
+            cache_folder=str(self.models_dir)
         )
         self.vector_store = None
         
@@ -40,14 +37,14 @@ class RAGManager:
         if self.data_dir.exists():
             valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
             if valid_files:
-                print(f"[RAG] Startup scan: {len(valid_files)} documents found. Synchronizing...")
+                print(f"[RAG] Startup scan: {len(valid_files)} documents found in data/uploads.")
                 self.process_documents()
         
         self.load_index()
 
     def load_index(self):
         if (self.index_dir / "index.faiss").exists():
-            print("[RAG] Loading existing FAISS index...")
+            print("[RAG] Loading existing FAISS index from data/vectordb...")
             try:
                 self.vector_store = FAISS.load_local(
                     str(self.index_dir),
@@ -73,11 +70,11 @@ class RAGManager:
             if self.data_dir.exists():
                 valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
                 if valid_files:
-                    print(f"[RAG] Found {len(valid_files)} unindexed documents. Auto-indexing now...")
+                    print(f"[RAG] Found {len(valid_files)} unindexed documents in data/uploads. Auto-indexing now...")
                     self.process_documents()
 
     def process_documents(self):
-        print(f"[RAG] Processing documents in {self.data_dir}...")
+        print(f"[RAG] Processing documents in data/uploads...")
         
         # Load Markdown
         md_loader = DirectoryLoader(str(self.data_dir), glob="**/*.md", loader_cls=TextLoader)
@@ -102,7 +99,7 @@ class RAGManager:
         # Index
         self.vector_store = FAISS.from_documents(docs, self.embeddings)
         self.vector_store.save_local(str(self.index_dir)) # type: ignore
-        print(f"[RAG] Index saved to {self.index_dir}")
+        print(f"[RAG] Index saved to data/vectordb")
 
     def query(self, text: str, k: int = 3) -> str:
         if not self.vector_store:

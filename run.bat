@@ -32,11 +32,19 @@ echo.
 echo  -----------------------------------------------------------
 echo    STARTING BACKEND...
 echo    Open in browser:   http://localhost:8000
-echo    Press Ctrl+C and Ctrl+R to RESTART/RESET.
+echo    Press Ctrl+C to STOP and Ctrl+R to RESTART/RESET.
 echo  -----------------------------------------------------------
 echo.
 
 python -m backend.main
+
+:: If Python exited with code 3, it was a Ctrl+R restart request.
+if %ERRORLEVEL% equ 3 (
+    echo.
+    echo  [ !! ] RESTART SIGNAL DETECTED. Rebooting...
+    timeout /t 1 >nul
+    goto MAIN_MENU
+)
 
 echo.
 echo  ===========================================================
