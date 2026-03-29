@@ -30,8 +30,8 @@ main_loop() {
         sleep 1
     fi
     echo "[ OK ] Porta 8000 limpa."
-
     echo ""
+
     echo "-----------------------------------------------------------"
     echo "  INICIANDO BACKEND..."
     echo "  Abrir no browser:  http://localhost:8000"

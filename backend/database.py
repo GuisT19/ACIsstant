@@ -93,3 +93,43 @@ class ChatDB:
             cursor.execute("DELETE FROM messages WHERE chat_id = ?", (chat_id,))
             cursor.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
             conn.commit()
+
+    def compress_messages(self, chat_id: str, count: int, summary: str) -> None:
+        """Delete the oldest `count` messages and insert a compressed summary."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM messages WHERE chat_id = ? ORDER BY timestamp ASC LIMIT ?",
+                (chat_id, count)
+            )
+            ids_to_delete = [row[0] for row in cursor.fetchall()]
+            
+            if ids_to_delete:
+                placeholders = ",".join("?" * len(ids_to_delete))
+                cursor.execute(
+                    f"DELETE FROM messages WHERE id IN ({placeholders})",
+                    ids_to_delete
+                )
+                cursor.execute(
+                    "INSERT INTO messages (chat_id, role, content, timestamp) VALUES (?, 'system', ?, datetime('now', '-1 hour'))",
+                    (chat_id, summary)
+                )
+            conn.commit()
+
+    def purge_oldest_messages(self, chat_id: str, count: int) -> None:
+        """Delete the oldest `count` messages from a chat."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM messages WHERE chat_id = ? ORDER BY timestamp ASC LIMIT ?",
+                (chat_id, count)
+            )
+            ids_to_delete = [row[0] for row in cursor.fetchall()]
+            
+            if ids_to_delete:
+                placeholders = ",".join("?" * len(ids_to_delete))
+                cursor.execute(
+                    f"DELETE FROM messages WHERE id IN ({placeholders})",
+                    ids_to_delete
+                )
+            conn.commit()

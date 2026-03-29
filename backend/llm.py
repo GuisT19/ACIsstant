@@ -21,26 +21,24 @@ class LLMManager:
             total_ram_gb = psutil.virtual_memory().total / (1024**3)
             
             # Optimization logic:
-            # - Use physical cores minus 1 (stay cool) but at least 4
-            n_threads = max(4, min(8, physical_cores - 1))
+            # - More threads = faster generation (up to a point)
+            n_threads = max(4, min(12, psutil.cpu_count(logical=True) or 4))
             
-            # - Scale context by RAM (24GB total means we can go high)
-            if total_ram_gb >= 16:
-                n_ctx = 32768
-            elif total_ram_gb >= 8:
-                n_ctx = 8192
-            else:
-                n_ctx = 4096
+            # - Reduced n_batch = faster initial response (latency)
+            # Higher numbers (512) are good for throughput but increase first-token delay
+            n_batch = 128
+            
+            # - Consistent context for 16GB RAM
+            n_ctx = 16384 if total_ram_gb >= 14 else 8192
                 
             print(f"[LLM] HW Auto-Optimize: {n_threads} threads, {n_ctx} context (Detected {int(total_ram_gb)}GB RAM)")
             
-            # GGML_QUIET suppresses C-level llama.cpp output without breaking ctypes callbacks
             os.environ["GGML_QUIET"] = "1"
             self.llm = Llama(
                 model_path=str(self.model_path),
                 n_threads=n_threads,
                 n_ctx=n_ctx,
-                n_batch=512,
+                n_batch=n_batch,
                 verbose=False
             )
             print("[LLM] Model loaded successfully.")
@@ -85,23 +83,31 @@ class LLMManager:
             yield token
 
     def get_system_prompt(self, language: str = "en-US") -> str:
+        # We now instruct the AI to use ONLY English or European Portuguese.
+        lang_instruction = (
+            "IMPORTANT: You MUST ONLY respond in English or European Portuguese. "
+            "Match the user's language IF they use English or European Portuguese. "
+            "If the user uses any other language (e.g., Spanish, French, etc.), YOU MUST respond in English."
+        )
         if language == "pt-PT":
             return (
-                "És o ACIsstant, um Assistente de Engenharia Local 100% OFF-LINE e PRIVADO. "
+                f"És o ACIsstant, um Assistente de Engenharia Local 100% OFF-LINE e PRIVADO. {lang_instruction} "
                 "TU TENS ACESSO EXCLUSIVO AOS FICHEIROS NA PASTA DE UPLOADS (data/uploads). "
                 "Respondes em Português Europeu por defeito. Se te falarem em Inglês, respondes em Inglês. "
                 "NUNCA digas que tens acesso a qualquer outra pasta além de 'uploads'. "
                 "NUNCA dês respostas de recusa como 'não tenho acesso' quando questionado sobre ficheiros em 'uploads'. "
-                "Usa SEMPRE LaTeX ($$) para fórmulas e símbolos ($ para em-linha). "
-                "Toda a tua base de conhecimento externa vem unicamente da diretiva [SYSTEM INFO]."
+                "NUNCA uses LaTeX (como \\frac, \\begin, etc.). Usa EXCLUSIVAMENTE a sintaxe do MATLAB para todas as fórmulas, frações e cálculos (ex: G(s) = (vo(s)/vi(s)) = 1/(s*L)). "
+                "Todas as expressões matemáticas devem ser escritas em texto simples legível, como se estivesses a escrever código MATLAB. "
+                "Prioriza a informação dos ficheiros fornecidos. Se a informação não estiver nos ficheiros, usa o teu conhecimento técnico de engenharia para ajudar o utilizador da forma mais precisa possível."
             )
         else:
             return (
-                "You are ACIsstant, a 100% OFFLINE and PRIVATE Local Engineering Assistant. "
+                f"You are ACIsstant, a 100% OFFLINE and PRIVATE Local Engineering Assistant. {lang_instruction} "
                 "YOU HAVE EXCLUSIVE ACCESS TO FILES IN THE UPLOADS FOLDER (data/uploads). "
                 "Default to English. Respond in Portuguese if the user speaks Portuguese. "
                 "NEVER claim to have access to any folder other than 'uploads'. "
                 "NEVER give refusal responses like 'I don't have access' when asked about files in 'uploads'. "
-                "ALWAYS use LaTeX ($$) for formulas and symbols ($ for inline). "
-                "Your entire external knowledge base comes solely from your [SYSTEM INFO] directive."
+                "Usa SEMPRE LaTeX para fórmulas matemáticas: usa $$ para fórmulas em bloco (ex: $$\\frac{1}{sL}$$) e $ para símbolos ou fórmulas na mesma linha (ex: $x=y$). "
+                "Foca-te na 'identação matemática correta' e profissional em todas as respostas. "
+                "Prioriza a informação dos ficheiros fornecidos. Se a informação não estiver nos ficheiros, usa o teu conhecimento técnico de engenharia para ajudar o utilizador da forma mais precisa possível."
             )

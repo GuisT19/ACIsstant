@@ -188,6 +188,99 @@ body {
     z-index: 10;
 }
 
+/* Token Usage Bar */
+.token-bar-container {
+    padding: 6px 2rem 8px;
+    background: rgba(10, 10, 15, 0.6);
+    border-bottom: 1px solid var(--border-color);
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.token-bar-container.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.token-bar-track {
+    position: relative;
+    width: 100%;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.token-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    transition: width 0.8s cubic-bezier(0.25, 0.8, 0.25, 1),
+                background 0.6s ease;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.token-bar-fill.warning {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.token-bar-fill.critical {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+    animation: barPulse 2s ease-in-out infinite;
+}
+
+.token-bar-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+    z-index: 2;
+    letter-spacing: 0.5px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.token-bar-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    opacity: 0.7;
+}
+
+.token-status {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.token-status.compressed {
+    color: #f59e0b;
+}
+
+.token-status.purging {
+    color: #ef4444;
+}
+
+@keyframes barPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.75; }
+}
+
 #toggle-sidebar {
     background: transparent;
     border: none;
@@ -690,4 +783,21 @@ pre code {
 
 .btn-open:hover {
     background: rgba(59, 130, 246, 0.2);
+}
+.sources-box {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: rgba(168, 85, 247, 0.05);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    animation: fadeIn 0.5s ease;
+}
+
+.sources-box strong {
+    color: var(--accent-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }

@@ -30,10 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Configure marked
-    if (typeof markedKatex !== 'undefined') {
-        marked.use(markedKatex({ throwOnError: false }));
-    }
-
     marked.setOptions({
         highlight: function (code, lang) {
             if (lang && hljs.getLanguage(lang)) {
@@ -88,8 +84,12 @@ async function createNewChat(titleOpt = null) {
         });
         const data = await res.json();
         currentChatId = data.chat_id;
-        loadChat(data.chat_id, data.title);
-        loadChatList();
+        
+        // Immediate activation: update UI before returning
+        document.getElementById('current-chat-title').innerText = data.title;
+        document.getElementById('chat-messages').innerHTML = ''; 
+        
+        loadChatList(); 
         return currentChatId;
     } catch (err) {
         console.error("Failed to create chat:", err);
@@ -122,25 +122,11 @@ async function loadChat(chatId, title) {
         } else {
             messages.forEach(msg => appendMessage(msg.role, msg.content));
         }
-        renderMathInPane(messagesPane);
         renderCircuits(messagesPane);
+        startTokenPolling();
     } catch (err) {
         console.error("Failed to load messages:", err);
         messagesPane.innerHTML = 'Error loading messages.';
-    }
-}
-
-function renderMathInPane(element) {
-    if (typeof renderMathInElement !== 'undefined') {
-        renderMathInElement(element, {
-            delimiters: [
-                { left: "$$", right: "$$", display: true },
-                { left: "$", right: "$", display: false },
-                { left: "\\(", right: "\\)", display: false },
-                { left: "\\[", right: "\\]", display: true }
-            ],
-            throwOnError: false
-        });
     }
 }
 
@@ -232,32 +218,91 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let isFirstChunk = true;
+        let chunkCount = 0;
+        const chatIdAtStart = currentChatId;
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
+            // Stop updating UI if user switched chats
+            if (currentChatId !== chatIdAtStart) {
+                // We let the loop finish to capture fullContent for the DB
+                const chunk = decoder.decode(value, { stream: true });
+                fullContent += chunk;
+                continue;
+            }
+
             const chunk = decoder.decode(value, { stream: true });
             fullContent += chunk;
+            chunkCount++;
 
             if (isFirstChunk) {
-                // Clear the typing indicator
                 assistantMsgDiv.querySelector('.ai-body').innerHTML = '';
                 isFirstChunk = false;
             }
 
             const pane = document.getElementById('chat-messages');
-            // Check if user is already near the bottom before auto-scrolling
             const isScrolledToBottom = pane.scrollHeight - pane.clientHeight <= pane.scrollTop + 80;
 
             const bodyEl = assistantMsgDiv.querySelector('.ai-body');
-            bodyEl.innerHTML = marked.parse(fullContent);
-            renderMathInPane(bodyEl);
-            renderCircuits(bodyEl);
+            
+            let displayContent = fullContent;
+            
+            // Re-added KaTeX preprocessor for professional math representation
+            // Normalizing common LLM delimiters [ ] and ( ) to standard LaTeX
+            displayContent = displayContent
+                .replace(/\\\[/g, '$$$$')
+                .replace(/\\\]/g, '$$$$')
+                .replace(/\\\(/g, '$')
+                .replace(/\\\)/g, '$');
+
+            let sourcesFound = "";
+            if (displayContent.includes("\n\nSOURCES: ")) {
+                const parts = displayContent.split("\n\nSOURCES: ");
+                displayContent = parts[0];
+                sourcesFound = parts[1];
+            }
+
+            bodyEl.innerHTML = marked.parse(displayContent);
+            
+            // Trigger KaTeX render
+            renderMathInElement(bodyEl, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
+            
+            if (sourcesFound) {
+                let sourcesBox = assistantMsgDiv.querySelector('.sources-box');
+                if (!sourcesBox) {
+                    sourcesBox = document.createElement('div');
+                    sourcesBox.className = 'sources-box';
+                    assistantMsgDiv.appendChild(sourcesBox);
+                }
+                const label = currentLanguage === 'pt-PT' ? 'Fontes Utilizadas' : 'Sources Used';
+                sourcesBox.innerHTML = `<strong><i class="fas fa-book"></i> ${label}:</strong><br>${sourcesFound}`;
+            }
+
+            // Optimization: Only render circuits every 8 chunks to keep UI responsive
+            if (chunkCount % 8 === 0) {
+                renderCircuits(bodyEl);
+            }
 
             if (isScrolledToBottom) {
                 pane.scrollTop = pane.scrollHeight;
             }
+        }
+        
+        // Final render to ensure everything is perfect
+        if (currentChatId === chatIdAtStart) {
+            const bodyEl = assistantMsgDiv.querySelector('.ai-body');
+            renderMathInPane(bodyEl);
+            renderCircuits(bodyEl);
         }
     } catch (err) {
         console.error("Streaming error:", err);
@@ -265,6 +310,7 @@ async function sendMessage() {
     } finally {
         sendBtn.disabled = false;
         input.focus();
+        updateTokenBar();
     }
 }
 
@@ -512,7 +558,6 @@ window.addEventListener('keydown', async (e) => {
         console.log("ACIsstant: Hot-Restart Triggered (Ctrl+R)");
         try {
             await fetch(`${API_BASE.replace('/api', '')}/api/restart`, { method: 'POST' });
-            // Show a small overlay or just wait for the server to die
             document.body.innerHTML = `
                 <div style="background:#000; color:#a855f7; height:100vh; display:flex; align-items:center; justify-content:center; font-family:sans-serif; flex-direction:column; gap:20px;">
                     <i class="fas fa-sync fa-spin" style="font-size:3rem;"></i>
@@ -526,3 +571,119 @@ window.addEventListener('keydown', async (e) => {
         }
     }
 });
+
+// ===== TOKEN USAGE BAR MANAGEMENT =====
+let isCompressing = false;
+let tokenPollInterval = null;
+
+async function updateTokenBar() {
+    if (!currentChatId) {
+        const container = document.getElementById('token-bar-container');
+        if (container) container.classList.remove('visible');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/token-usage/${currentChatId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const container = document.getElementById('token-bar-container');
+        const fill = document.getElementById('token-bar-fill');
+        const label = document.getElementById('token-bar-label');
+        const countEl = document.getElementById('token-count');
+        const statusEl = document.getElementById('token-status');
+
+        if (!container || !fill || !label) return;
+
+        container.classList.add('visible');
+
+        const pct = data.percentage;
+        fill.style.width = `${Math.min(pct, 100)}%`;
+        label.textContent = `${pct}%`;
+        countEl.textContent = `${data.used_tokens.toLocaleString()} / ${data.max_tokens.toLocaleString()} tokens`;
+
+        fill.classList.remove('warning', 'critical');
+        statusEl.classList.remove('compressed', 'purging');
+        statusEl.textContent = '';
+
+        if (pct >= 80) {
+            fill.classList.add('critical');
+            statusEl.textContent = '⚠ COMPRESSING...';
+            statusEl.classList.add('purging');
+            if (!isCompressing) {
+                await autoCompress();
+            }
+        } else if (pct >= 60) {
+            fill.classList.add('warning');
+            statusEl.textContent = '● HIGH USAGE';
+            statusEl.classList.add('compressed');
+        }
+
+        if (data.is_compressed && pct < 60) {
+            statusEl.textContent = '◆ COMPRESSED';
+            statusEl.classList.add('compressed');
+        }
+
+    } catch (err) {
+        console.error("Token bar update failed:", err);
+    }
+}
+
+async function autoCompress() {
+    if (isCompressing || !currentChatId) return;
+    isCompressing = true;
+    console.log("[TokenMgr] Starting auto-compression...");
+
+    try {
+        const compressRes = await fetch(`${API_BASE}/chat/compress/${currentChatId}`, { method: 'POST' });
+        const compressData = await compressRes.json();
+        console.log("[TokenMgr] Compression result:", compressData);
+
+        await new Promise(r => setTimeout(r, 500));
+        const usageRes = await fetch(`${API_BASE}/token-usage/${currentChatId}`);
+        const usageData = await usageRes.json();
+
+        if (usageData.percentage >= 20 && compressData.status === 'compressed') {
+            console.log("[TokenMgr] Post-compression usage still high, starting purge cycle...");
+            await autoPurge();
+        }
+    } catch (err) {
+        console.error("[TokenMgr] Compression error:", err);
+    } finally {
+        isCompressing = false;
+        await updateTokenBar();
+    }
+}
+
+async function autoPurge() {
+    if (!currentChatId) return;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`[TokenMgr] Purge cycle ${attempts}...`);
+        try {
+            const purgeRes = await fetch(`${API_BASE}/chat/purge/${currentChatId}`, { method: 'POST' });
+            const purgeData = await purgeRes.json();
+            if (purgeData.status === 'skip') { console.log("[TokenMgr] Purge skipped."); break; }
+            console.log(`[TokenMgr] Purged ${purgeData.removed} messages.`);
+
+            await new Promise(r => setTimeout(r, 300));
+            const usageRes = await fetch(`${API_BASE}/token-usage/${currentChatId}`);
+            const usageData = await usageRes.json();
+            if (usageData.percentage < 20) { console.log("[TokenMgr] Below 20%, done."); break; }
+        } catch (err) { console.error("[TokenMgr] Purge error:", err); break; }
+    }
+}
+
+function startTokenPolling() {
+    stopTokenPolling();
+    updateTokenBar();
+    tokenPollInterval = setInterval(updateTokenBar, 15000);
+}
+
+function stopTokenPolling() {
+    if (tokenPollInterval) { clearInterval(tokenPollInterval); tokenPollInterval = null; }
+}
