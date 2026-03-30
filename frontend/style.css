@@ -425,7 +425,7 @@ select#lang-select {
     color: rgba(255,255,255,0.3);
 }
 
-.send-btn {
+.send-btn, .stop-btn {
     background: var(--msg-user-bg);
     color: white;
     border: none;
@@ -444,6 +444,16 @@ select#lang-select {
 .send-btn:hover:not(:disabled) {
     transform: scale(1.05) translateY(-2px);
     box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.stop-btn {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.stop-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
 }
 
 .send-btn:disabled {

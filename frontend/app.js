@@ -1,6 +1,7 @@
 const API_BASE = "http://localhost:8000/api";
 let currentChatId = null;
 let currentLanguage = "en-US";
+let currentAbortController = null;
 
 // --- Initializing UI ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('send-btn').addEventListener('click', sendMessage);
+    document.getElementById('stop-btn').addEventListener('click', stopGenerating);
 
     // Toggle sidebar for small screens
     document.getElementById('toggle-sidebar').addEventListener('click', () => {
@@ -164,7 +166,53 @@ function appendMessage(role, content) {
         if (content === 'TYPING') {
             msgDiv.innerHTML = `${header}<div ${bodyClass}><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
         } else {
-            msgDiv.innerHTML = `${header}<div ${bodyClass}>${marked.parse(content)}</div>`;
+            // Reapply Math protection for history rendering (same as stream)
+            let displayContent = content
+                .replace(/\\\[/g, '$$$$')
+                .replace(/\\\]/g, '$$$$')
+                .replace(/\\\(/g, '$')
+                .replace(/\\\)/g, '$');
+                
+            let sourcesFound = "";
+            if (displayContent.includes("\n\nSOURCES: ")) {
+                const parts = displayContent.split("\n\nSOURCES: ");
+                displayContent = parts[0];
+                sourcesFound = parts[1];
+            }
+
+            let mathPlaceholders = [];
+            displayContent = displayContent.replace(/\$\$([\s\S]*?)\$\$/g, function(match, math) {
+                mathPlaceholders.push(`$$${math}$$`);
+                return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
+            displayContent = displayContent.replace(/(^|[^\\$])\$([^$\n]+)\$/g, function(match, prefix, math) {
+                mathPlaceholders.push(`$${math}$`);
+                return `${prefix}%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
+
+            let htmlContent = marked.parse(displayContent);
+            mathPlaceholders.forEach((mathStr, index) => {
+                // By passing a function, we prevent JS from treating $$ as an escape character for $
+                htmlContent = htmlContent.replace(`%%%MATH_${index}%%%`, () => mathStr);
+            });
+
+            if (sourcesFound) {
+                htmlContent += `<div class="sources-box"><strong><i class="fas fa-book"></i> Sources Used</strong><br>${sourcesFound}</div>`;
+            }
+
+            msgDiv.innerHTML = `${header}<div ${bodyClass}>${htmlContent}</div>`;
+            
+            // Render Math immediately for this historical message
+            const innerBody = msgDiv.querySelector('.ai-body');
+            renderMathInElement(innerBody, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
         }
     } else {
         msgDiv.innerText = content;
@@ -194,6 +242,10 @@ async function sendMessage() {
     input.value = '';
     input.style.height = 'auto';
     sendBtn.disabled = true;
+    sendBtn.style.display = 'none';
+    document.getElementById('stop-btn').style.display = 'inline-block';
+    
+    currentAbortController = new AbortController();
 
     // Add user message to UI
     appendMessage('user', message);
@@ -205,6 +257,7 @@ async function sendMessage() {
     try {
         const response = await fetch(`${API_BASE}/chat/stream`, {
             method: 'POST',
+            signal: currentAbortController.signal,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 chat_id: currentChatId,
@@ -260,11 +313,34 @@ async function sendMessage() {
             let sourcesFound = "";
             if (displayContent.includes("\n\nSOURCES: ")) {
                 const parts = displayContent.split("\n\nSOURCES: ");
-                displayContent = parts[0];
+                displayContent = displayContent.split("\n\nSOURCES: ")[0];
                 sourcesFound = parts[1];
             }
 
-            bodyEl.innerHTML = marked.parse(displayContent);
+            // --- PROTECT MATH FROM MARKED ---
+            let mathPlaceholders = [];
+            
+            // Protect block math $$ ... $$
+            displayContent = displayContent.replace(/\$\$([\s\S]*?)\$\$/g, function(match, math) {
+                mathPlaceholders.push(`$$${math}$$`);
+                return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
+            // Protect inline math $ ... $
+            // (Careful to distinguish between matching $ and random text without spaces)
+            displayContent = displayContent.replace(/(^|[^\\$])\$([^$\n]+)\$/g, function(match, prefix, math) {
+                mathPlaceholders.push(`$${math}$`);
+                return `${prefix}%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
+
+            // Parse markdown without destroying the math underscores/asterisks!
+            let htmlContent = marked.parse(displayContent);
+
+            // --- RESTORE MATH ---
+            mathPlaceholders.forEach((mathStr, index) => {
+                htmlContent = htmlContent.replace(`%%%MATH_${index}%%%`, () => mathStr);
+            });
+
+            bodyEl.innerHTML = htmlContent;
             
             // Trigger KaTeX render
             renderMathInElement(bodyEl, {
@@ -301,16 +377,44 @@ async function sendMessage() {
         // Final render to ensure everything is perfect
         if (currentChatId === chatIdAtStart) {
             const bodyEl = assistantMsgDiv.querySelector('.ai-body');
-            renderMathInPane(bodyEl);
+            renderMathInElement(bodyEl, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false
+            });
             renderCircuits(bodyEl);
         }
     } catch (err) {
-        console.error("Streaming error:", err);
-        assistantMsgDiv.querySelector('.ai-body').innerHTML = `<span style="color:#ef4444;"><i class="fas fa-exclamation-triangle"></i> Communication error with server. Check if the backend is running.</span>`;
+        if (err.name === 'AbortError') {
+            console.log("Generation stopped by user.");
+            // We can leave the partial text as is, just add a small indicator
+            const bodyEl = assistantMsgDiv.querySelector('.ai-body');
+            bodyEl.innerHTML += `<br><span style="color:#f59e0b; font-size:0.85em;"><i>[Geração Interrompida]</i></span>`;
+        } else {
+            console.error("Streaming error:", err);
+            const errDiv = document.createElement('div');
+            errDiv.style.color = '#ef4444';
+            errDiv.style.marginTop = '10px';
+            errDiv.innerHTML = `<strong><i class="fas fa-exclamation-triangle"></i> Javascript/Stream Error:</strong> ${err.message || err}<br><small>${err.stack || ''}</small>`;
+            assistantMsgDiv.querySelector('.ai-body').appendChild(errDiv);
+        }
     } finally {
         sendBtn.disabled = false;
+        sendBtn.style.display = 'inline-block';
+        document.getElementById('stop-btn').style.display = 'none';
+        currentAbortController = null;
         input.focus();
         updateTokenBar();
+    }
+}
+
+function stopGenerating() {
+    if (currentAbortController) {
+        currentAbortController.abort();
     }
 }
 
@@ -686,4 +790,42 @@ function startTokenPolling() {
 
 function stopTokenPolling() {
     if (tokenPollInterval) { clearInterval(tokenPollInterval); tokenPollInterval = null; }
+}
+
+function convertLatexToMatlab(text) {
+    let out = text;
+    // Hide block math rendering
+    out = out.replace(/\$\$/g, '');
+    out = out.replace(/\\\[/g, '');
+    out = out.replace(/\\\]/g, '');
+    out = out.replace(/\\\(/g, '');
+    out = out.replace(/\\\)/g, '');
+    // inline dollars
+    out = out.replace(/(^|[^\\$\n])\$([^$\n]+)\$/g, '$1$2');
+
+    // Handle fractions
+    let oldOut;
+    do {
+        oldOut = out;
+        out = out.replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1)/($2)');
+    } while (out !== oldOut);
+
+    // Other symbols
+    out = out.replace(/\\cdot/g, '*');
+    out = out.replace(/\\times/g, '*');
+    out = out.replace(/\\int_\{([^{}]+)\}\^\{([^{}]+)\}/g, 'integral(..., $1, $2)');
+    out = out.replace(/\\int/g, 'integral');
+    out = out.replace(/\\infty/g, 'inf');
+    out = out.replace(/\\left\(/g, '(');
+    out = out.replace(/\\right\)/g, ')');
+    out = out.replace(/\\left\[/g, '[');
+    out = out.replace(/\\right\]/g, ']');
+    out = out.replace(/\\,/g, ' ');
+    out = out.replace(/\\;/g, ' ');
+    out = out.replace(/\\quad/g, ' ');
+    out = out.replace(/\\text\{([^{}]+)\}/g, '$1');
+    out = out.replace(/\\mathrm\{([^{}]+)\}/g, '$1');
+    out = out.replace(/\\_/g, '_');
+    
+    return out;
 }

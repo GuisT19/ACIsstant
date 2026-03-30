@@ -1,3 +1,4 @@
+
 import os
 import logging
 from pathlib import Path
@@ -14,6 +15,8 @@ logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 logging.getLogger("pypdf").setLevel(logging.ERROR)
 logging.getLogger("pypdf._reader").setLevel(logging.ERROR)
 
+logger = logging.getLogger("acisstant.rag")
+
 class RAGManager:
     def __init__(self, data_dir: str = "data/uploads", index_dir: str = "data/vectordb"):
         self.base_dir = Path(__file__).parent.parent
@@ -27,85 +30,93 @@ class RAGManager:
         os.environ["HF_HOME"] = str(self.models_dir)
         print(f"[RAG] Using local model storage: data/models")
 
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            cache_folder=str(self.models_dir)
-        )
-        self.vector_store = None
-        
-        # Auto-scan and build on startup to ensure RAG is never empty
-        if self.data_dir.exists():
-            valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
-            if valid_files:
-                print(f"[RAG] Startup scan: {len(valid_files)} documents found in data/uploads.")
-                self.process_documents()
-        
-        self.load_index()
-
-    def load_index(self):
-        if (self.index_dir / "index.faiss").exists():
-            print("[RAG] Loading existing FAISS index from data/vectordb...")
-            try:
-                self.vector_store = FAISS.load_local(
-                    str(self.index_dir),
-                    self.embeddings,
-                    allow_dangerous_deserialization=True
-                )
-                print("[RAG] FAISS index loaded successfully.")
-            except Exception as e:
-                print(f"[RAG] Failed to load index ({e}). Rebuilding...")
-                # Delete corrupted/incompatible index and rebuild
-                import shutil
-                shutil.rmtree(str(self.index_dir), ignore_errors=True)
-                self.index_dir.mkdir(parents=True, exist_ok=True)
-                self.vector_store = None
-                if self.data_dir.exists():
-                    valid_files = [f for f in self.data_dir.rglob("*")
-                                   if f.is_file() and f.suffix in [".pdf", ".md", ".txt"]
-                                   and f.name != "README.md"]
-                    if valid_files:
-                        self.process_documents()
-        else:
-            print("[RAG] No index found.")
+        try:
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="all-MiniLM-L6-v2",
+                cache_folder=str(self.models_dir)
+            )
+            self.vector_store = None
+            # Auto-scan and build on startup to ensure RAG is never empty
             if self.data_dir.exists():
                 valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
                 if valid_files:
-                    print(f"[RAG] Found {len(valid_files)} unindexed documents in data/uploads. Auto-indexing now...")
+                    logger.info(f"[RAG] Startup scan: {len(valid_files)} documents found in data/uploads.")
                     self.process_documents()
+            self.load_index()
+        except Exception as e:
+            logger.error(f"[RAG] Initialization failed: {e}")
+            self.vector_store = None
+
+    def load_index(self):
+        try:
+            if (self.index_dir / "index.faiss").exists():
+                logger.info("[RAG] Loading existing FAISS index from data/vectordb...")
+                try:
+                    self.vector_store = FAISS.load_local(
+                        str(self.index_dir),
+                        self.embeddings,
+                        allow_dangerous_deserialization=True
+                    )
+                    logger.info("[RAG] FAISS index loaded successfully.")
+                except Exception as e:
+                    logger.error(f"[RAG] Failed to load index ({e}). Rebuilding...")
+                    # Delete corrupted/incompatible index and rebuild
+                    import shutil
+                    shutil.rmtree(str(self.index_dir), ignore_errors=True)
+                    self.index_dir.mkdir(parents=True, exist_ok=True)
+                    self.vector_store = None
+                    if self.data_dir.exists():
+                        valid_files = [f for f in self.data_dir.rglob("*")
+                                       if f.is_file() and f.suffix in [".pdf", ".md", ".txt"]
+                                       and f.name != "README.md"]
+                        if valid_files:
+                            self.process_documents()
+            else:
+                logger.info("[RAG] No index found.")
+                if self.data_dir.exists():
+                    valid_files = [f for f in self.data_dir.rglob("*") if f.is_file() and f.suffix in [".pdf", ".md", ".txt"] and f.name != "README.md"]
+                    if valid_files:
+                        logger.info(f"[RAG] Found {len(valid_files)} unindexed documents in data/uploads. Auto-indexing now...")
+                        self.process_documents()
+        except Exception as e:
+            logger.error(f"[RAG] load_index failed: {e}")
+            self.vector_store = None
 
     def process_documents(self):
-        print(f"[RAG] Processing documents in data/uploads...")
-        
+        logger.info(f"[RAG] Processing documents in data/uploads...")
         # Load Markdown
         md_loader = DirectoryLoader(str(self.data_dir), glob="**/*.md", loader_cls=TextLoader)
         # Load PDF
         pdf_loader = DirectoryLoader(str(self.data_dir), glob="**/*.pdf", loader_cls=PyPDFLoader)
-        
         documents = []
         try:
             documents.extend(md_loader.load())
             documents.extend(pdf_loader.load())
         except Exception as e:
-            print(f"[RAG] Error loading docs: {e}")
-            
+            logger.error(f"[RAG] Error loading docs: {e}")
         if not documents:
-            print("[RAG] No documents found to index.")
+            logger.warning("[RAG] No documents found to index.")
             return
-
-        # Split
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-        docs = text_splitter.split_documents(documents)
-        
-        # Index
-        self.vector_store = FAISS.from_documents(docs, self.embeddings)
-        self.vector_store.save_local(str(self.index_dir)) # type: ignore
-        print(f"[RAG] Index saved to data/vectordb")
+        try:
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+            docs = text_splitter.split_documents(documents)
+            self.vector_store = FAISS.from_documents(docs, self.embeddings)
+            self.vector_store.save_local(str(self.index_dir)) # type: ignore
+            logger.info(f"[RAG] Index saved to data/vectordb")
+        except Exception as e:
+            logger.error(f"[RAG] Failed to process documents: {e}")
+            self.vector_store = None
 
     def query(self, text: str, k: int = 3) -> tuple[str, List[str]]:
         if not self.vector_store:
+            logger.warning("[RAG] Query attempted but vector_store is not loaded.")
             return "", []
-        
-        docs = self.vector_store.similarity_search(text, k=k) # type: ignore
-        context = "\n---\n".join([doc.page_content for doc in docs])
-        sources = list(set([os.path.basename(doc.metadata.get('source', 'Unknown')) for doc in docs]))
-        return context, sources
+        try:
+            docs = self.vector_store.similarity_search(text, k=k) # type: ignore
+            context = "\n---\n".join([doc.page_content for doc in docs])
+            sources = list(set([os.path.basename(doc.metadata.get('source', 'Unknown')) for doc in docs]))
+            logger.info(f"[RAG] Query for '{text[:30]}...' returned {len(docs)} docs.")
+            return context, sources
+        except Exception as e:
+            logger.error(f"[RAG] Query failed: {e}")
+            return "", []

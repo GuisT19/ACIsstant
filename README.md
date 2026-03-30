@@ -12,6 +12,13 @@ The application automatically detects system resources—including RAM and CPU c
 ### Scientific Notation and Formulas
 ACIsstant includes comprehensive support for LaTeX equations. Mathematical formulas are rendered via KaTeX, providing clear and professional visualization of complex expressions directly within the chat interface.
 
+### Advanced UI Features & Debugging
+ACIsstant now features a robust, self-healing frontend with multiple Quality-of-Life upgrades:
+*   **Math Protection Engine:** A built-in regex-based shielding parser (`mathPlaceholders`) ensures that KaTeX LaTeX delimiters never collide with `marked.js` markdown parsers, solving the classic underscore-italic corruption bug in equations.
+*   **Graceful Prompt Cancellation:** Generative inference can be immediately aborted mid-stream by the user via an `AbortController` injection, instantly halting computational overhead.
+*   **Inline Debug UI:** Network and asynchronous JS errors during generation are caught and explicitly printed with full stack traces natively inside the affected chat bubbles for painless maintenance.
+*   **Cache Bypassing:** The FastAPI backend serves `index.html` with explicit strict `Cache-Control: no-cache` parameters to prevent stale frontend caching.
+
 ### Circuit Diagram Generation
 The assistant can generate and render circuit diagrams. Utilizing Circuitikz and TikzJax, requested diagrams are produced as high-quality SVG images within the browser environment.
 
@@ -27,8 +34,8 @@ All chat history is stored in a local SQLite database. This allows for secure ma
 
 *   **Model:** Qwen2.5 3B Instruct (GGUF Q4_K_M)
 *   **Inference Engine:** llama-cpp-python
-*   **Backend:** FastAPI
-*   **Frontend:** Vanilla HTML/JS/CSS with KaTeX and Highlight.js
+*   **Backend:** FastAPI / Uvicorn (With Auto Cache-Control headers)
+*   **Frontend:** Vanilla HTML/JS/CSS with KaTeX, Highlight.js and Marked.js
 *   **Vector Database:** FAISS
 *   **Privacy:** 100% Offline; no telemetry or external data transmission.
 
@@ -41,7 +48,7 @@ All chat history is stored in a local SQLite database. This allows for secure ma
 
 1.  **Install Dependencies:** Run `install_windows.bat`.
 2.  **Download Model:** Execute `venv\Scripts\python download_model.py`.
-3.  **Start Application:** Run `run.bat`.
+3.  **Start Application:** Run `run.bat` (Use `Ctrl+R` to trigger Hot-Restart inside the terminal at any time).
 
 ### Linux (Arch and other distributions)
 **Prerequisite:** Python and virtual environment (venv) support.
@@ -65,7 +72,7 @@ All chat history is stored in a local SQLite database. This allows for secure ma
 | Directory/File | Description |
 | :--- | :--- |
 | `backend/` | Application logic, LLM engine, and RAG implementation. |
-| `frontend/` | Web-based user interface components. |
+| `frontend/` | Web-based user interface components, math protection, streaming parsers. |
 | `data/uploads/` | Storage for documents used in RAG indexing. |
 | `models/` | Storage for model GGUF files. |
 | `install_windows.bat` | Automated installation script for Windows. |
