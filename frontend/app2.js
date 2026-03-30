@@ -133,24 +133,66 @@ async function loadChat(chatId, title) {
 }
 
 function renderCircuits(element) {
-    // Look for Tikz code blocks in the element
-    const codeBlocks = element.querySelectorAll('code.language-latex, code.language-tex');
+    // Look for Tikz code blocks in the element (catch any code block, even unlabelled)
+    const codeBlocks = element.querySelectorAll('pre code');
     codeBlocks.forEach(block => {
         const content = block.innerText;
         if (content.includes('\\begin{circuitikz}') || content.includes('\\begin{tikzpicture}')) {
-            const tikzScript = document.createElement('script');
-            tikzScript.type = 'text/tikz';
-            tikzScript.textContent = content;
-            block.parentElement.replaceWith(tikzScript);
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.border = 'none';
+            iframe.style.minHeight = '350px';
+            iframe.style.background = 'white'; // Tikz rendering is usually dark text
+            iframe.style.borderRadius = '10px';
+            iframe.style.marginTop = '15px';
+            
+            // Render it completely isolated so TikzJax native DOMContentLoaded fires correctly!
+            iframe.srcdoc = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <base href="https://tikzjax.com/v1/">
+                    <link rel="stylesheet" type="text/css" href="fonts.css">
+                    <script src="tikzjax.js"></script>
+                </head>
+                <body style="display:flex; justify-content:center; align-items:center; margin:0; padding: 20px;">
+                    <script type="text/tikz">
+                        ${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            iframe.onload = () => {
+                // Try resizing nicely
+                setTimeout(() => {
+                    try {
+                        const body = iframe.contentWindow.document.body;
+                        iframe.style.height = (body.scrollHeight + 20) + 'px';
+                    } catch(e) {}
+                }, 1500);
+            };
+            
+            block.parentElement.replaceWith(iframe);
         }
     });
+}
 
-    // Re-trigger TikzJax if it's already loaded
-    if (window.Litz) {
-        // TikzJax handles global scripts automatically, but for dynamic content
-        // we might need to trigger a re-run if TikzJax supports it.
-        // Actually TikzJax (v1) observes DOM changes if configured, 
-        // or we can just let it find the new scripts.
+function renderWaveDrom(element) {
+    const codeBlocks = element.querySelectorAll('code.language-json, code.language-wavedrom');
+    codeBlocks.forEach(block => {
+        const content = block.innerText;
+        // Basic heuristic to check if it's wavedrom json
+        if (content.includes('"signal":') || content.includes('"assign":')) {
+            const scriptNode = document.createElement('script');
+            scriptNode.type = 'WaveDrom';
+            scriptNode.textContent = content;
+            block.parentElement.replaceWith(scriptNode);
+        }
+    });
+    if (window.WaveDrom) {
+        window.WaveDrom.ProcessAll();
     }
 }
 
@@ -367,6 +409,7 @@ async function sendMessage() {
             // Optimization: Only render circuits every 8 chunks to keep UI responsive
             if (chunkCount % 8 === 0) {
                 renderCircuits(bodyEl);
+                renderWaveDrom(bodyEl);
             }
 
             if (isScrolledToBottom) {

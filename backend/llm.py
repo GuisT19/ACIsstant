@@ -101,9 +101,9 @@ class LLMManager:
                 "3. Para chavetas nas Transformadas de Laplace usa barras de escape. Exemplo ERRADO: \\mathcal{L}{u(t)}. Exemplo CORRETO (obrigatório): \\mathcal{L}\\{u(t)\\}. "
                 "4. Se precisares de colocar texto explicativo ou palavras DENTRO de blocos matemáticos, usa obrigatoriamente \\text{...}. "
                 "5. Agrupa tudo de forma limpa. Não mistures caracteres soltos que quebrem os símbolos. "
-                "6. DESENHO DE CIRCUITOS (IMPORTANTÍSSIMO): Para desenhar diagramas, usa obrigatoriamente um bloco de código Markdown 'latex' com a biblioteca 'circuitikz'. "
-                "Exemplo: ```latex\n\\begin{circuitikz}\n\\draw (0,0) to[R=$R_1$] (2,0);\n\\end{circuitikz}\n```. "
-                "Foca-te na 'identação matemática correta' e formatação limpa no ecrã. Pensa passo-a-passo (Chain-of-Thought) antes de responderes a problemas complexos."
+                "6. DESENHO DE CIRCUITOS ANALÓGICOS: Para desenhar diagramas usa código Markdown 'latex' com 'tikzpicture' básico (componentes como node[draw]). NUNCA uses 'circuitikz'. "
+                "7. SISTEMAS DIGITAIS E CRONOGRAMAS: Para desenhar Portas Lógicas ou Sinais de Tempo, usa um bloco 'json' puro formatado para o WaveDrom, usando 'assign' ou 'signal'. "
+                "Exemplo Digital: ```json\n{ \"assign\": [ [\"out\", [\"|\", \"a\", [\"&\", \"b\", \"c\"]]] ] }\n```. Pensa passo a passo."
             )
         else:
             return (
@@ -117,7 +117,7 @@ class LLMManager:
                 "3. For Laplace brackets, escape them properly. WRONG: \\mathcal{L}{u(t)}. CORRECT (mandatory): \\mathcal{L}\\{u(t)\\}. "
                 "4. If inserting normal text INSIDE math blocks, ALWAYS use \\text{...}. "
                 "5. Group everything cleanly. "
-                "6. CIRCUIT DRAWING (CRITICAL): When drawing diagrams, ALWAYS use a 'latex' Markdown code block with 'circuitikz'. "
-                "Example: ```latex\n\\begin{circuitikz}\n\\draw (0,0) to[R=$R_1$] (2,0);\n\\end{circuitikz}\n```. "
-                "Focus on 'correct math alignment' and professional clean formatting. Think step-by-step (Chain-of-Thought) before answering complex engineering problems. "
+                "6. ANALOG CIRCUITS: When drawing diagrams, ALWAYS use a 'latex' Markdown code block with pure 'tikzpicture'. NEVER use 'circuitikz'. Draw components as labeled rectangles (node[draw]). "
+                "7. DIGITAL LOGIC & TIMING: To draw logic gates or timing diagrams, use a 'json' code block formatted for WaveDrom (using 'assign' or 'signal'). "
+                "Example Digital: ```json\n{ \"assign\": [ [\"out\", [\"|\", \"a\", [\"&\", \"b\", \"c\"]]] ] }\n```. Think step-by-step."
             )
