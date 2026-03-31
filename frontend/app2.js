@@ -223,6 +223,12 @@ function appendMessage(role, content) {
             }
 
             let mathPlaceholders = [];
+            // Protect LaTeX environments (align*, equation, matrix, etc.) FIRST
+            // so that \\ line-breaks inside them survive marked.parse() intact.
+            displayContent = displayContent.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, function(match) {
+                mathPlaceholders.push(match);
+                return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
             displayContent = displayContent.replace(/\$\$([\s\S]*?)\$\$/g, function(match, math) {
                 mathPlaceholders.push(`$$${math}$$`);
                 return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
@@ -361,14 +367,20 @@ async function sendMessage() {
 
             // --- PROTECT MATH FROM MARKED ---
             let mathPlaceholders = [];
-            
+
+            // Protect LaTeX environments (align*, equation, matrix, etc.) FIRST
+            // so that \\ line-breaks inside them survive marked.parse() intact.
+            displayContent = displayContent.replace(/\\begin\{([^}]+)\}([\s\S]*?)\\end\{\1\}/g, function(match) {
+                mathPlaceholders.push(match);
+                return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
+            });
+
             // Protect block math $$ ... $$
             displayContent = displayContent.replace(/\$\$([\s\S]*?)\$\$/g, function(match, math) {
                 mathPlaceholders.push(`$$${math}$$`);
                 return `%%%MATH_${mathPlaceholders.length - 1}%%%`;
             });
             // Protect inline math $ ... $
-            // (Careful to distinguish between matching $ and random text without spaces)
             displayContent = displayContent.replace(/(^|[^\\$])\$([^$\n]+)\$/g, function(match, prefix, math) {
                 mathPlaceholders.push(`$${math}$`);
                 return `${prefix}%%%MATH_${mathPlaceholders.length - 1}%%%`;
