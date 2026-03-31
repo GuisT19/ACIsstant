@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -238,21 +239,53 @@ async def chat_stream(request: ChatRequest):
 
     async def event_generator():
         full_response = ""
-        try:
-            for token in llm_manager.generate_stream(llm_messages):
-                full_response += token
-                yield token
-            if sources:
-                yield f"\n\nSOURCES: {', '.join(sources)}"
-        except Exception as e:
-            logger.error(f"LLM Stream Error: {e}")
-            yield f"\nERROR: {str(e)}"
-        try:
-            db.add_message(chat_id, "assistant", full_response)
-        except Exception as e:
-            logger.error(f"Failed to store assistant message: {e}")
+        queue: asyncio.Queue = asyncio.Queue()
+        # get_running_loop() is correct in Python 3.10+ inside an async context
+        loop = asyncio.get_running_loop()
+        _DONE = object()  # sentinel
 
-    return StreamingResponse(event_generator(), media_type="text/plain")
+        def run_llm():
+            """Run the synchronous LLM generator in a background thread."""
+            try:
+                for token in llm_manager.generate_stream(llm_messages):
+                    loop.call_soon_threadsafe(queue.put_nowait, token)
+            except Exception as e:
+                logger.error(f"LLM Stream Error (thread): {e}")
+                loop.call_soon_threadsafe(queue.put_nowait, f"\nERROR: {str(e)}")
+            finally:
+                # Always signal completion so the async generator doesn't hang
+                loop.call_soon_threadsafe(queue.put_nowait, _DONE)
+
+        # Kick off LLM in a thread — we intentionally don't await the future
+        # because the queue/sentinel pattern below handles synchronisation.
+        loop.run_in_executor(None, run_llm)
+
+        try:
+            while True:
+                item = await queue.get()
+                if item is _DONE:
+                    break
+                full_response += item
+                yield item
+            if sources:
+                src_chunk = f"\n\nSOURCES: {', '.join(sources)}"
+                full_response += src_chunk
+                yield src_chunk
+        except asyncio.CancelledError:
+            logger.info("[Stream] Client disconnected mid-stream.")
+            raise
+        finally:
+            try:
+                db.add_message(chat_id, "assistant", full_response)
+            except Exception as e:
+                logger.error(f"Failed to store assistant message: {e}")
+
+    headers = {
+        # Prevent nginx / any reverse proxy from buffering the stream
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache",
+    }
+    return StreamingResponse(event_generator(), media_type="text/plain", headers=headers)
 
 @app.post("/api/upload")
 async def upload_docs(files: List[UploadFile] = File(...)):
